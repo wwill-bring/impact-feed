@@ -132,5 +132,10 @@
       "hammock",
       "cooler"
     ]
+  },
+  "cabelas": {
+    "programs": [
+      "cabela"
+    ]
   }
 }
