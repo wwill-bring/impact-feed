@@ -10,6 +10,7 @@
  *   data-title       heading text (default "Shop the deals"); data-title="" hides it
  *   data-shuffle     "false" to always show the top products in order (default: random pick from the top 24)
  *   data-brand       only show products whose brand contains this text
+ *   data-program     only show products from one affiliate program, e.g. "cabela"
  *   data-disclosure  replace the disclosure sentence
  */
 (function () {
@@ -78,12 +79,14 @@
     var count = parseInt(el.getAttribute("data-count"), 10) || 4;
     var title = el.hasAttribute("data-title") ? el.getAttribute("data-title") : "Shop the deals";
     var brand = (el.getAttribute("data-brand") || "").toLowerCase();
+    var program = (el.getAttribute("data-program") || "").toLowerCase().replace(/'/g, "");
     var doShuffle = el.getAttribute("data-shuffle") !== "false";
     var disclosure = el.getAttribute("data-disclosure") || DISCLOSURE;
 
     load(feed).then(function (data) {
       var items = (data.items || []).filter(function (i) {
-        return i.url && (!brand || (i.brand || "").toLowerCase().indexOf(brand) > -1);
+        return i.url && (!brand || (i.brand || "").toLowerCase().indexOf(brand) > -1) &&
+          (!program || (i.program || "").toLowerCase().replace(/'/g, "").indexOf(program) > -1);
       });
       if (doShuffle) items = shuffle(items.slice(0, Math.max(24, count)));
       items = items.slice(0, count);
