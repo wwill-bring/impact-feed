@@ -12,9 +12,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -23,6 +23,9 @@ jobs:
           IMPACT_FTP_HOST: ${{ secrets.IMPACT_FTP_HOST }}
           IMPACT_FTP_USER: ${{ secrets.IMPACT_FTP_USER }}
           IMPACT_FTP_PASS: ${{ secrets.IMPACT_FTP_PASS }}
+          IMPACT_ACCOUNT_SID: ${{ secrets.IMPACT_ACCOUNT_SID }}
+          IMPACT_AUTH_TOKEN: ${{ secrets.IMPACT_AUTH_TOKEN }}
+          API_QUERY:       ${{ vars.API_QUERY }}
           CATALOG_MATCH:   ${{ vars.CATALOG_MATCH }}
           FEED_TITLE:      ${{ vars.FEED_TITLE }}
           FEED_LINK:       ${{ vars.FEED_LINK }}
