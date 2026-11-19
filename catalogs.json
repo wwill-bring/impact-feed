@@ -1,0 +1,53 @@
+{
+  "_note": "Catalogs to pull, by Impact catalog ID. 'keywords' limits a catalog to matching products.",
+  "catalogs": {
+    "10636": {
+      "label": "Cabela's"
+    },
+    "530": {
+      "label": "Target"
+    },
+    "21610": {
+      "label": "Best Buy"
+    },
+    "4962": {
+      "label": "Banana Republic"
+    },
+    "4972": {
+      "label": "Gap Factory"
+    },
+    "4963": {
+      "label": "Athleta"
+    },
+    "5263": {
+      "label": "NFL Shop",
+      "keywords": [
+        "Minnesota Vikings"
+      ]
+    },
+    "5264": {
+      "label": "NHL Shop",
+      "keywords": [
+        "Minnesota Wild"
+      ]
+    },
+    "5266": {
+      "label": "MLB Shop",
+      "keywords": [
+        "Minnesota Twins"
+      ]
+    },
+    "5265": {
+      "label": "NBA Store",
+      "keywords": [
+        "Minnesota Timberwolves"
+      ]
+    },
+    "10333": {
+      "label": "WNBA Shop",
+      "keywords": [
+        "Minnesota Lynx"
+      ]
+    }
+  }
+}
