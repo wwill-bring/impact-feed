@@ -1,34 +1,34 @@
 {
   "all": {},
   "sports": {
-    "include": [
-      "jersey",
-      "fan gear",
-      "fanatics",
-      "nfl",
-      "nba",
-      "wnba",
-      "mlb",
-      "nhl",
-      "ncaa",
-      "vikings",
-      "twins",
-      "timberwolves",
-      "wild",
-      "lynx",
-      "gophers",
-      "football",
-      "basketball",
-      "baseball",
-      "hockey",
-      "golf",
-      "sporting",
-      "athletic",
-      "tickets"
+    "programs": [
+      "nfl shop",
+      "nhl shop",
+      "mlb shop"
+    ]
+  },
+  "vikings": {
+    "programs": [
+      "nfl shop"
     ],
-    "exclude": [
-      "wildflower",
-      "wildlife"
+    "include": [
+      "vikings"
+    ]
+  },
+  "wild": {
+    "programs": [
+      "nhl shop"
+    ],
+    "include": [
+      "minnesota wild"
+    ]
+  },
+  "twins": {
+    "programs": [
+      "mlb shop"
+    ],
+    "include": [
+      "twins"
     ]
   },
   "outdoors": {
@@ -45,53 +45,9 @@
       "boating"
     ]
   },
-  "home": {
-    "include": [
-      "home",
-      "kitchen",
-      "furniture",
-      "bedding",
-      "decor",
-      "appliance",
-      "garden",
-      "patio",
-      "grill"
-    ],
-    "exclude": [
-      "jersey",
-      "fan gear"
-    ]
-  },
-  "tech": {
-    "include": [
-      "electronics",
-      "computer",
-      "laptop",
-      "phone",
-      "headphone",
-      "television",
-      "smart home",
-      "gaming",
-      "camera"
-    ]
-  },
-  "winter": {
-    "include": [
-      "winter",
-      "snow",
-      "jacket",
-      "parka",
-      "boots",
-      "gloves",
-      "heater",
-      "thermal",
-      "ski"
-    ]
-  },
   "hunting": {
     "include": [
       "hunting",
-      "rifle scope",
       "blind",
       "tree stand",
       "decoy",
@@ -113,12 +69,7 @@
       "ice fishing",
       "auger",
       "fish finder",
-      "line",
       "bait"
-    ],
-    "exclude": [
-      "guideline",
-      "online"
     ]
   },
   "camping": {
@@ -133,9 +84,75 @@
       "cooler"
     ]
   },
+  "winter": {
+    "include": [
+      "winter",
+      "snow",
+      "parka",
+      "boots",
+      "gloves",
+      "heater",
+      "thermal",
+      "ski"
+    ]
+  },
+  "home": {
+    "include": [
+      "home",
+      "kitchen",
+      "furniture",
+      "bedding",
+      "decor",
+      "appliance",
+      "garden",
+      "patio",
+      "grill"
+    ],
+    "exclude": [
+      "jersey",
+      "fan gear"
+    ]
+  },
+  "tech": {
+    "programs": [
+      "best buy"
+    ]
+  },
+  "fashion": {
+    "programs": [
+      "banana republic",
+      "gap factory",
+      "athleta"
+    ]
+  },
   "cabelas": {
     "programs": [
       "cabela"
+    ]
+  },
+  "target": {
+    "programs": [
+      "target"
+    ]
+  },
+  "bestbuy": {
+    "programs": [
+      "best buy"
+    ]
+  },
+  "bananarepublic": {
+    "programs": [
+      "banana republic"
+    ]
+  },
+  "gap": {
+    "programs": [
+      "gap factory"
+    ]
+  },
+  "athleta": {
+    "programs": [
+      "athleta"
     ]
   }
 }
