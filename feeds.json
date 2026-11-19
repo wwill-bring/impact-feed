@@ -4,7 +4,9 @@
     "programs": [
       "nfl shop",
       "nhl shop",
-      "mlb shop"
+      "mlb shop",
+      "nba store",
+      "wnba"
     ]
   },
   "vikings": {
@@ -29,6 +31,22 @@
     ],
     "include": [
       "twins"
+    ]
+  },
+  "timberwolves": {
+    "programs": [
+      "nba store"
+    ],
+    "include": [
+      "timberwolves"
+    ]
+  },
+  "lynx": {
+    "programs": [
+      "wnba"
+    ],
+    "include": [
+      "lynx"
     ]
   },
   "outdoors": {
