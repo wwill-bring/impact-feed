@@ -25,7 +25,7 @@ Standard library only. Settings come from environment variables
   IN_STOCK_ONLY        "true" to drop out-of-stock items (default true)
   SORT_BY              "discount", "newest", or "none" (default discount)
 """
-import csv, ftplib, gzip, io, json, os, sys, datetime, email.utils, html, zipfile, tempfile, urllib.parse
+import csv, ftplib, gzip, io, json, os, sys, datetime, email.utils, html, zipfile, tempfile, urllib.parse, time
 from xml.sax.saxutils import escape
 
 csv.field_size_limit(10_000_000)
@@ -75,15 +75,34 @@ def ftp_connect():
     host, user, pw = env("IMPACT_FTP_HOST"), env("IMPACT_FTP_USER"), env("IMPACT_FTP_PASS")
     if not (host and user and pw):
         sys.exit("Missing IMPACT_FTP_HOST / IMPACT_FTP_USER / IMPACT_FTP_PASS")
-    host = host.replace("ftp://", "").replace("sftp://", "").strip("/")
-    try:
-        ftp = ftplib.FTP_TLS(host, timeout=180)
-        ftp.login(user, pw)
-        ftp.prot_p()
-    except Exception:
-        ftp = ftplib.FTP(host, timeout=180)
-        ftp.login(user, pw)
-    return ftp
+    host = host.replace("ftp://", "").replace("sftp://", "").split("/")[0].split("@")[-1]
+    print(f"Connecting to {host} as {user} (password is {len(pw)} characters)")
+
+    # Impact gives an ftp:// link, so try plain FTP first, then FTPS.
+    errors = []
+    for label, cls in (("FTP", ftplib.FTP), ("FTPS", ftplib.FTP_TLS)):
+        ftp = None
+        try:
+            ftp = cls(timeout=180)
+            ftp.connect(host, 21)
+            print(f"{label} server says: {ftp.getwelcome()}")
+            ftp.login(user, pw)
+            if label == "FTPS":
+                ftp.prot_p()
+            ftp.set_pasv(True)
+            print(f"Logged in with {label}")
+            return ftp
+        except Exception as e:
+            errors.append(f"{label}: {type(e).__name__}: {e}")
+            print(f"{label} login failed -> {type(e).__name__}: {e}")
+            try:
+                if ftp:
+                    ftp.close()
+            except Exception:
+                pass
+            time.sleep(5)
+    sys.exit("Could not log in to Impact FTP.\n  " + "\n  ".join(errors) +
+             "\nCheck IMPACT_FTP_USER / IMPACT_FTP_PASS (or click 'Reset FTP Password' in Impact).")
 
 
 def fetch_from_ftp():
