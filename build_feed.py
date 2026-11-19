@@ -14,6 +14,9 @@ Standard library only. Settings come from environment variables
   IMPACT_FTP_PASS      password from Impact's credentials email
   CATALOG_MATCH        comma-separated parts of catalog file names to pull,
                        e.g. "Fanatics,Dicks". Blank = every catalog found.
+  IMPACT_ACCOUNT_SID   Impact API Account SID  } if set, the API is used
+  IMPACT_AUTH_TOKEN    Impact API Auth Token   } instead of FTP
+  API_QUERY            optional API filter, e.g. "DiscountPercentage > 10"
   LOCAL_FILE           comma-separated local .csv/.txt/.gz/.zip files (skips FTP)
   TRACKING_TEMPLATE    optional; wraps plain store links, e.g.
                        https://cabelas.sjv.io/c/1409449/AD_ID/CAMPAIGN_ID?u={url}
@@ -25,7 +28,7 @@ Standard library only. Settings come from environment variables
   IN_STOCK_ONLY        "true" to drop out-of-stock items (default true)
   SORT_BY              "discount", "newest", or "none" (default discount)
 """
-import csv, ftplib, gzip, io, json, os, sys, datetime, email.utils, html, zipfile, tempfile, urllib.parse, time
+import csv, ftplib, gzip, io, json, os, sys, datetime, email.utils, html, zipfile, tempfile, urllib.parse, urllib.request, urllib.error, base64, time, re
 from xml.sax.saxutils import escape
 
 csv.field_size_limit(10_000_000)
@@ -143,6 +146,79 @@ def fetch_from_ftp():
     return files
 
 
+# ---------- Impact API (used when IMPACT_ACCOUNT_SID is set) ----------
+
+API_BASE = "https://api.impact.com"
+
+
+def api_get(path_or_url, sid, token, params=None):
+    url = path_or_url if path_or_url.startswith("http") else API_BASE + path_or_url
+    if params:
+        url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
+    auth = base64.b64encode(f"{sid}:{token}".encode()).decode()
+    req = urllib.request.Request(url, headers={"Authorization": f"Basic {auth}",
+                                               "Accept": "application/json",
+                                               "User-Agent": "impact-feed/1.0"})
+    for attempt in range(6):
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            if e.code in (429, 500, 502, 503, 504) and attempt < 5:
+                wait = 15 * (attempt + 1)
+                print(f"  API {e.code}, retrying in {wait}s")
+                time.sleep(wait)
+                continue
+            raise
+
+
+def iter_api_rows():
+    sid, token = env("IMPACT_ACCOUNT_SID"), env("IMPACT_AUTH_TOKEN")
+    if not (sid and token):
+        sys.exit("Missing IMPACT_ACCOUNT_SID / IMPACT_AUTH_TOKEN")
+    data = api_get(f"/Mediapartners/{sid}/Catalogs", sid, token, {"PageSize": 1000})
+    cats = data.get("Catalogs", [])
+    print("Catalogs on your account:")
+    for c in cats:
+        print(f"  {c.get('Id')}: {c.get('Name')} ({c.get('AdvertiserName')}, {c.get('NumberOfItems')} items)")
+    matches_ = [m.strip().lower() for m in env("CATALOG_MATCH").split(",") if m.strip()]
+    if matches_:
+        cats = [c for c in cats if any(m in " ".join(str(c.get(k, "")) for k in
+                ("Id", "Name", "AdvertiserName", "CampaignName")).lower().replace("'", "") for m in matches_)]
+    if not cats:
+        sys.exit("No catalogs matched CATALOG_MATCH.")
+
+    limit = int(env("API_MAX_PER_CATALOG", "20000") or 20000)   # Impact caps paging at 20,000
+    query = env("API_QUERY")                                    # optional, e.g. DiscountPercentage > 10
+    for c in cats:
+        program = c.get("AdvertiserName") or c.get("CampaignName") or c.get("Name") or ""
+        print(f"Fetching items from catalog {c.get('Id')} ({program})")
+        params = {"PageSize": 1000}
+        if query:
+            params["Query"] = query
+        url, got = f"/Mediapartners/{sid}/Catalogs/{c['Id']}/Items", 0
+        while url and got < limit:
+            try:
+                page = api_get(url, sid, token, params)
+            except urllib.error.HTTPError as e:
+                print(f"  stopped paging at {got} items (HTTP {e.code})")
+                break
+            params = None                      # next-page URI already has them
+            for it in page.get("Items", []):
+                row = {}
+                for k, v in it.items():
+                    if isinstance(v, list):
+                        v = ", ".join(str(x) for x in v if not isinstance(x, (dict, list)))
+                    elif isinstance(v, dict) or v is None:
+                        v = ""
+                    row[k.lower()] = str(v)
+                row["_program"] = program
+                yield row
+                got += 1
+            url = page.get("@nextpageuri") or ""
+        print(f"  got {got} items")
+
+
 def iter_rows(path):
     """Stream rows from a .csv/.txt/.tsv file, optionally gzipped or zipped."""
     with open(path, "rb") as f:
@@ -212,6 +288,7 @@ def to_item(r):
         "desc": desc[:300] + ("…" if len(desc) > 300 else ""),
         "_stock": pick(r, "stock").lower().replace(" ", "").replace("_", ""),
         "_launch": pick(r, "launch"),
+        "program": r.get("_program", ""),
         "_text": " ".join([name, pick(r, "brand"), pick(r, "category"), pick(r, "ptype"), pick(r, "labels")]).lower(),
     }
 
@@ -220,12 +297,16 @@ def matches(item, rule):
     inc = [w.lower() for w in rule.get("include", [])]
     exc = [w.lower() for w in rule.get("exclude", [])]
     brands = [b.lower() for b in rule.get("brands", [])]
+    programs = [p.lower().replace("'", "") for p in rule.get("programs", [])]
+    if programs and not any(p in item.get("program", "").lower().replace("'", "") for p in programs):
+        return False
     t = item["_text"]
-    if exc and any(w in t for w in exc):
+    has = lambda w: re.search(r"\b" + re.escape(w), t) is not None   # word-start match
+    if exc and any(has(w) for w in exc):
         return False
     if brands and not any(b in item["brand"].lower() for b in brands):
         return False
-    if inc and not any(w in t for w in inc):
+    if inc and not any(has(w) for w in inc):
         return False
     return True
 
@@ -279,21 +360,25 @@ def write_rss(path, name, items, now):
 
 def main():
     local = [p.strip() for p in env("LOCAL_FILE").split(",") if p.strip()]
-    files = local or fetch_from_ftp()
+    if local:
+        rows_iter = (r for path in local for r in iter_rows(path))
+    elif env("IMPACT_ACCOUNT_SID"):
+        rows_iter = iter_api_rows()
+    else:
+        rows_iter = (r for path in fetch_from_ftp() for r in iter_rows(path))
 
     in_stock_only = env("IN_STOCK_ONLY", "true").lower() == "true"
     ok_stock = ("", "instock", "yes", "true", "1", "limitedavailability", "preorder", "backorder")
     items, seen, total = [], set(), 0
-    for path in files:
-        for r in iter_rows(path):
-            total += 1
-            it = to_item(r)
-            if not it or it["id"] in seen:
-                continue
-            if in_stock_only and it["_stock"] not in ok_stock:
-                continue
-            seen.add(it["id"])
-            items.append(it)
+    for r in rows_iter:
+        total += 1
+        it = to_item(r)
+        if not it or it["id"] in seen:
+            continue
+        if in_stock_only and it["_stock"] not in ok_stock:
+            continue
+        seen.add(it["id"])
+        items.append(it)
     print(f"Read {total} catalog rows, kept {len(items)} in-stock products")
     if not items:
         sys.exit("No usable products found. Check the column names printed above.")
