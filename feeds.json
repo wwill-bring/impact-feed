@@ -1,0 +1,136 @@
+{
+  "all": {},
+  "sports": {
+    "include": [
+      "jersey",
+      "fan gear",
+      "fanatics",
+      "nfl",
+      "nba",
+      "wnba",
+      "mlb",
+      "nhl",
+      "ncaa",
+      "vikings",
+      "twins",
+      "timberwolves",
+      "wild",
+      "lynx",
+      "gophers",
+      "football",
+      "basketball",
+      "baseball",
+      "hockey",
+      "golf",
+      "sporting",
+      "athletic",
+      "tickets"
+    ],
+    "exclude": [
+      "wildflower",
+      "wildlife"
+    ]
+  },
+  "outdoors": {
+    "include": [
+      "camping",
+      "fishing",
+      "hunting",
+      "hiking",
+      "outdoor",
+      "kayak",
+      "cooler",
+      "snowshoe",
+      "ice fishing",
+      "boating"
+    ]
+  },
+  "home": {
+    "include": [
+      "home",
+      "kitchen",
+      "furniture",
+      "bedding",
+      "decor",
+      "appliance",
+      "garden",
+      "patio",
+      "grill"
+    ],
+    "exclude": [
+      "jersey",
+      "fan gear"
+    ]
+  },
+  "tech": {
+    "include": [
+      "electronics",
+      "computer",
+      "laptop",
+      "phone",
+      "headphone",
+      "television",
+      "smart home",
+      "gaming",
+      "camera"
+    ]
+  },
+  "winter": {
+    "include": [
+      "winter",
+      "snow",
+      "jacket",
+      "parka",
+      "boots",
+      "gloves",
+      "heater",
+      "thermal",
+      "ski"
+    ]
+  },
+  "hunting": {
+    "include": [
+      "hunting",
+      "rifle scope",
+      "blind",
+      "tree stand",
+      "decoy",
+      "game call",
+      "camo",
+      "deer",
+      "duck",
+      "trail camera",
+      "binocular"
+    ]
+  },
+  "fishing": {
+    "include": [
+      "fishing",
+      "rod",
+      "reel",
+      "lure",
+      "tackle",
+      "ice fishing",
+      "auger",
+      "fish finder",
+      "line",
+      "bait"
+    ],
+    "exclude": [
+      "guideline",
+      "online"
+    ]
+  },
+  "camping": {
+    "include": [
+      "camping",
+      "tent",
+      "sleeping bag",
+      "backpack",
+      "lantern",
+      "camp stove",
+      "hammock",
+      "cooler"
+    ]
+  }
+}
