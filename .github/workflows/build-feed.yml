@@ -1,0 +1,41 @@
+name: Build product RSS feed
+
+on:
+  schedule:
+    - cron: "17 11 * * *"   # daily, 5:17 AM Central (11:17 UTC; 6:17 AM during daylight time)
+  workflow_dispatch:        # adds a "Run workflow" button for manual runs
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build feed
+        env:
+          IMPACT_FTP_HOST: ${{ secrets.IMPACT_FTP_HOST }}
+          IMPACT_FTP_USER: ${{ secrets.IMPACT_FTP_USER }}
+          IMPACT_FTP_PASS: ${{ secrets.IMPACT_FTP_PASS }}
+          CATALOG_MATCH:   ${{ vars.CATALOG_MATCH }}
+          FEED_TITLE:      ${{ vars.FEED_TITLE }}
+          FEED_LINK:       ${{ vars.FEED_LINK }}
+          FEED_DESCRIPTION: ${{ vars.FEED_DESCRIPTION }}
+          MAX_ITEMS:       ${{ vars.MAX_ITEMS }}
+          SORT_BY:         ${{ vars.SORT_BY }}
+          TRACKING_TEMPLATE: ${{ vars.TRACKING_TEMPLATE }}
+        run: python build_feed.py
+
+      - name: Commit feed if it changed
+        run: |
+          git config user.name "feed-bot"
+          git config user.email "feed-bot@users.noreply.github.com"
+          git add docs/
+          git diff --cached --quiet || git commit -m "Update feed $(date -u +%F)"
+          git push
