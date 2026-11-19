@@ -151,7 +151,7 @@ def fetch_from_ftp():
 API_BASE = "https://api.impact.com"
 
 
-def api_get(path_or_url, sid, token, params=None):
+def api_get(path_or_url, sid, token, params=None, fatal_auth=True):
     url = path_or_url if path_or_url.startswith("http") else API_BASE + path_or_url
     if params:
         url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
@@ -164,6 +164,12 @@ def api_get(path_or_url, sid, token, params=None):
             with urllib.request.urlopen(req, timeout=120) as r:
                 return json.loads(r.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
+            if e.code in (401, 403) and fatal_auth:
+                body = e.read().decode("utf-8", "replace")[:500]
+                print(f"Impact API refused the login (HTTP {e.code}). Impact says: {body}")
+                print(f"Account SID: {len(sid)} characters, starts with 'IR': {sid.startswith('IR')}; "
+                      f"Auth Token: {len(token)} characters")
+                sys.exit("Check IMPACT_ACCOUNT_SID / IMPACT_AUTH_TOKEN are a matching pair from Impact's API page.")
             if e.code in (429, 500, 502, 503, 504) and attempt < 5:
                 wait = 15 * (attempt + 1)
                 print(f"  API {e.code}, retrying in {wait}s")
@@ -172,31 +178,122 @@ def api_get(path_or_url, sid, token, params=None):
             raise
 
 
+def _flatten(it, program):
+    row = {}
+    for k, v in it.items():
+        if isinstance(v, list):
+            v = ", ".join(str(x) for x in v if not isinstance(x, (dict, list)))
+        elif isinstance(v, dict) or v is None:
+            v = ""
+        row[k.lower()] = str(v)
+    row["_program"] = program
+    return row
+
+
+def _keyword_ok(it, kw):
+    """Every word of the keyword must appear in the product's name/category/description."""
+    text = " ".join(str(it.get(k) or "") for k in ("Name", "Category", "SubCategory", "Description", "Labels")).lower()
+    return all(re.search(r"\b" + re.escape(w), text) for w in kw.lower().split())
+
+
+def load_catalog_config():
+    """catalogs.json (optional) picks catalogs by ID and can limit some to keywords."""
+    path = os.path.join(HERE, "catalogs.json")
+    if not os.path.exists(path):
+        return None
+    cfg = json.load(open(path, encoding="utf-8"))
+    return {str(k): v for k, v in cfg.get("catalogs", cfg).items() if not str(k).startswith("_")}
+
+
 def iter_api_rows():
     sid, token = env("IMPACT_ACCOUNT_SID"), env("IMPACT_AUTH_TOKEN")
     if not (sid and token):
         sys.exit("Missing IMPACT_ACCOUNT_SID / IMPACT_AUTH_TOKEN")
-    data = api_get(f"/Mediapartners/{sid}/Catalogs", sid, token, {"PageSize": 1000})
-    cats = data.get("Catalogs", [])
+    base = f"/Mediapartners/{sid}"
+    data = api_get(f"{base}/Catalogs", sid, token, {"PageSize": 1000})
+    all_cats = data.get("Catalogs", [])
     print("Catalogs on your account:")
-    for c in cats:
+    for c in all_cats:
         print(f"  {c.get('Id')}: {c.get('Name')} ({c.get('AdvertiserName')}, {c.get('NumberOfItems')} items)")
-    matches_ = [m.strip().lower() for m in env("CATALOG_MATCH").split(",") if m.strip()]
-    if matches_:
-        cats = [c for c in cats if any(m in " ".join(str(c.get(k, "")) for k in
-                ("Id", "Name", "AdvertiserName", "CampaignName")).lower().replace("'", "") for m in matches_)]
+
+    conf = load_catalog_config()
+    if conf:
+        print(f"Using catalogs.json ({len(conf)} catalogs)")
+        cats = [c for c in all_cats if str(c.get("Id")) in conf]
+        missing = set(conf) - {str(c.get("Id")) for c in cats}
+        if missing:
+            print(f"WARNING: these catalog IDs aren't on your account: {sorted(missing)}")
+    else:
+        conf = {}
+        matches_ = [m.strip().lower() for m in env("CATALOG_MATCH").split(",") if m.strip()]
+        def hit(c, m):
+            if m.isdigit():                      # a catalog ID must match exactly
+                return str(c.get("Id")) == m
+            text = " ".join(str(c.get(k, "")) for k in ("Name", "AdvertiserName", "CampaignName"))
+            return m.replace("'", "") in text.lower().replace("'", "")
+        cats = [c for c in all_cats if not matches_ or any(hit(c, m) for m in matches_)]
     if not cats:
-        sys.exit("No catalogs matched CATALOG_MATCH.")
+        sys.exit("No catalogs selected (check catalogs.json or CATALOG_MATCH).")
 
     limit = int(env("API_MAX_PER_CATALOG", "20000") or 20000)   # Impact caps paging at 20,000
     query = env("API_QUERY")                                    # optional, e.g. DiscountPercentage > 10
     for c in cats:
-        program = c.get("AdvertiserName") or c.get("CampaignName") or c.get("Name") or ""
-        print(f"Fetching items from catalog {c.get('Id')} ({program})")
+        cid = str(c.get("Id"))
+        opts = conf.get(cid, {})
+        label = opts.get("label", "")
+        # Program label = our label + brand + campaign + catalog name ("cabela", "nflshop", "target" all work)
+        program = " ".join(dict.fromkeys(x for x in (label, str(c.get("AdvertiserName") or ""),
+                           str(c.get("CampaignName") or ""), str(c.get("Name") or "")) if x)).strip()
+        keywords = opts.get("keywords", [])
+
+        if keywords:
+            # Only products matching these keywords (e.g. "Minnesota Vikings")
+            for kw in keywords:
+                got = 0
+                print(f"Searching catalog {cid} ({label or c.get('Name')}) for '{kw}'")
+                try:
+                    url, params, page_no = f"{base}/Catalogs/ItemSearch", {"Keyword": kw, "PageSize": 100, "Page": 1}, 1
+                    seen_pages = 0
+                    while url and seen_pages < 200:
+                        page = api_get(url, sid, token, params, fatal_auth=False)
+                        items = page.get("Items", [])
+                        seen_pages += 1
+                        for it in items:
+                            if str(it.get("CatalogId")) == cid and _keyword_ok(it, kw):
+                                yield _flatten(it, program); got += 1
+                        nxt = page.get("@nextpageuri")
+                        if nxt:
+                            url, params = nxt, None
+                        elif len(items) >= 100 and params is not None:
+                            page_no += 1; params = dict(params, Page=page_no)
+                        else:
+                            url = ""
+                    print(f"  search found {got} matching items")
+                except urllib.error.HTTPError as e:
+                    print(f"  keyword search not available (HTTP {e.code})")
+                if got == 0:
+                    # Fallback: scan the catalog and keep matching items
+                    print(f"  scanning catalog {cid} for '{kw}' instead")
+                    url, params, scanned = f"{base}/Catalogs/{cid}/Items", {"PageSize": 1000}, 0
+                    while url and scanned < limit:
+                        try:
+                            page = api_get(url, sid, token, params)
+                        except urllib.error.HTTPError as e:
+                            print(f"  stopped at {scanned} items (HTTP {e.code})"); break
+                        params = None
+                        for it in page.get("Items", []):
+                            scanned += 1
+                            if _keyword_ok(it, kw):
+                                yield _flatten(it, program); got += 1
+                        url = page.get("@nextpageuri") or ""
+                    print(f"  scanned {scanned}, kept {got}")
+            continue
+
+        print(f"Fetching items from catalog {cid} ({program})")
         params = {"PageSize": 1000}
         if query:
             params["Query"] = query
-        url, got = f"/Mediapartners/{sid}/Catalogs/{c['Id']}/Items", 0
+        url, got = f"{base}/Catalogs/{cid}/Items", 0
         while url and got < limit:
             try:
                 page = api_get(url, sid, token, params)
@@ -205,15 +302,7 @@ def iter_api_rows():
                 break
             params = None                      # next-page URI already has them
             for it in page.get("Items", []):
-                row = {}
-                for k, v in it.items():
-                    if isinstance(v, list):
-                        v = ", ".join(str(x) for x in v if not isinstance(x, (dict, list)))
-                    elif isinstance(v, dict) or v is None:
-                        v = ""
-                    row[k.lower()] = str(v)
-                row["_program"] = program
-                yield row
+                yield _flatten(it, program)
                 got += 1
             url = page.get("@nextpageuri") or ""
         print(f"  got {got} items")
@@ -360,12 +449,14 @@ def write_rss(path, name, items, now):
 
 def main():
     local = [p.strip() for p in env("LOCAL_FILE").split(",") if p.strip()]
+    downloaded = []
     if local:
         rows_iter = (r for path in local for r in iter_rows(path))
     elif env("IMPACT_ACCOUNT_SID"):
         rows_iter = iter_api_rows()
     else:
-        rows_iter = (r for path in fetch_from_ftp() for r in iter_rows(path))
+        downloaded = fetch_from_ftp()
+        rows_iter = (r for path in downloaded for r in iter_rows(path))
 
     in_stock_only = env("IN_STOCK_ONLY", "true").lower() == "true"
     ok_stock = ("", "instock", "yes", "true", "1", "limitedavailability", "preorder", "backorder")
@@ -379,6 +470,11 @@ def main():
             continue
         seen.add(it["id"])
         items.append(it)
+    for path in downloaded:      # delete big temp downloads
+        try:
+            os.remove(path)
+        except OSError:
+            pass
     print(f"Read {total} catalog rows, kept {len(items)} in-stock products")
     if not items:
         sys.exit("No usable products found. Check the column names printed above.")
