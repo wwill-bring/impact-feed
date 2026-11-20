@@ -172,5 +172,266 @@
     "programs": [
       "athleta"
     ]
+  },
+  "holiday": {
+    "programs": [
+      "target",
+      "best buy",
+      "banana republic",
+      "gap factory",
+      "athleta",
+      "cabela"
+    ],
+    "include": [
+      "christmas",
+      "holiday",
+      "hanukkah",
+      "gift",
+      "ornament",
+      "stocking",
+      "advent calendar",
+      "santa",
+      "nutcracker",
+      "snowman",
+      "reindeer",
+      "gingerbread",
+      "menorah",
+      "tree skirt",
+      "wrapping paper",
+      "string lights",
+      "ugly sweater",
+      "kwanzaa",
+      "black friday",
+      "cyber monday",
+      "cashmere",
+      "velvet",
+      "sequin",
+      "sweater",
+      "pajama",
+      "fleece",
+      "sherpa",
+      "party"
+    ],
+    "exclude": [
+      "gift card",
+      "egift"
+    ],
+    "fill": true
+  },
+  "target-holiday": {
+    "programs": [
+      "target"
+    ],
+    "include": [
+      "christmas",
+      "holiday",
+      "hanukkah",
+      "gift",
+      "ornament",
+      "stocking",
+      "advent calendar",
+      "santa",
+      "nutcracker",
+      "snowman",
+      "reindeer",
+      "gingerbread",
+      "menorah",
+      "tree skirt",
+      "wrapping paper",
+      "string lights",
+      "ugly sweater",
+      "kwanzaa",
+      "black friday",
+      "cyber monday"
+    ],
+    "exclude": [
+      "gift card",
+      "egift"
+    ],
+    "fill": true
+  },
+  "bestbuy-holiday": {
+    "programs": [
+      "best buy"
+    ],
+    "include": [
+      "christmas",
+      "holiday",
+      "hanukkah",
+      "gift",
+      "ornament",
+      "stocking",
+      "advent calendar",
+      "santa",
+      "nutcracker",
+      "snowman",
+      "reindeer",
+      "gingerbread",
+      "menorah",
+      "tree skirt",
+      "wrapping paper",
+      "string lights",
+      "ugly sweater",
+      "kwanzaa",
+      "black friday",
+      "cyber monday"
+    ],
+    "exclude": [
+      "gift card",
+      "egift"
+    ],
+    "fill": true
+  },
+  "bananarepublic-holiday": {
+    "programs": [
+      "banana republic"
+    ],
+    "include": [
+      "christmas",
+      "holiday",
+      "hanukkah",
+      "gift",
+      "ornament",
+      "stocking",
+      "advent calendar",
+      "santa",
+      "nutcracker",
+      "snowman",
+      "reindeer",
+      "gingerbread",
+      "menorah",
+      "tree skirt",
+      "wrapping paper",
+      "string lights",
+      "ugly sweater",
+      "kwanzaa",
+      "black friday",
+      "cyber monday",
+      "cashmere",
+      "velvet",
+      "sequin",
+      "sweater",
+      "pajama",
+      "fleece",
+      "sherpa",
+      "party"
+    ],
+    "exclude": [
+      "gift card",
+      "egift"
+    ],
+    "fill": true
+  },
+  "gap-holiday": {
+    "programs": [
+      "gap factory"
+    ],
+    "include": [
+      "christmas",
+      "holiday",
+      "hanukkah",
+      "gift",
+      "ornament",
+      "stocking",
+      "advent calendar",
+      "santa",
+      "nutcracker",
+      "snowman",
+      "reindeer",
+      "gingerbread",
+      "menorah",
+      "tree skirt",
+      "wrapping paper",
+      "string lights",
+      "ugly sweater",
+      "kwanzaa",
+      "black friday",
+      "cyber monday",
+      "cashmere",
+      "velvet",
+      "sequin",
+      "sweater",
+      "pajama",
+      "fleece",
+      "sherpa",
+      "party"
+    ],
+    "exclude": [
+      "gift card",
+      "egift"
+    ],
+    "fill": true
+  },
+  "athleta-holiday": {
+    "programs": [
+      "athleta"
+    ],
+    "include": [
+      "christmas",
+      "holiday",
+      "hanukkah",
+      "gift",
+      "ornament",
+      "stocking",
+      "advent calendar",
+      "santa",
+      "nutcracker",
+      "snowman",
+      "reindeer",
+      "gingerbread",
+      "menorah",
+      "tree skirt",
+      "wrapping paper",
+      "string lights",
+      "ugly sweater",
+      "kwanzaa",
+      "black friday",
+      "cyber monday",
+      "cashmere",
+      "velvet",
+      "sequin",
+      "sweater",
+      "pajama",
+      "fleece",
+      "sherpa",
+      "party"
+    ],
+    "exclude": [
+      "gift card",
+      "egift"
+    ],
+    "fill": true
+  },
+  "cabelas-holiday": {
+    "programs": [
+      "cabela"
+    ],
+    "include": [
+      "christmas",
+      "holiday",
+      "hanukkah",
+      "gift",
+      "ornament",
+      "stocking",
+      "advent calendar",
+      "santa",
+      "nutcracker",
+      "snowman",
+      "reindeer",
+      "gingerbread",
+      "menorah",
+      "tree skirt",
+      "wrapping paper",
+      "string lights",
+      "ugly sweater",
+      "kwanzaa",
+      "black friday",
+      "cyber monday"
+    ],
+    "exclude": [
+      "gift card",
+      "egift"
+    ],
+    "fill": true
   }
 }
