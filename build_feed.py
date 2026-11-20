@@ -236,6 +236,58 @@ def iter_api_rows():
         sys.exit("No catalogs selected (check catalogs.json or CATALOG_MATCH).")
 
     limit = int(env("API_MAX_PER_CATALOG", "20000") or 20000)   # Impact caps paging at 20,000
+
+    def search_catalog(cid, name, program, kw, max_pages, scan_fallback):
+        """Impact keyword search, kept to one catalog; optional full-catalog scan fallback."""
+        got = 0
+        print(f"Searching catalog {cid} ({name}) for '{kw}'")
+        try:
+            url, page_no, pages = f"{base}/Catalogs/ItemSearch", 1, 0
+            params = {"Keyword": kw, "PageSize": 100, "Page": 1, "Query": f"CatalogId = {cid}"}
+            while url and pages < max_pages:
+                try:
+                    page = api_get(url, sid, token, params, fatal_auth=False)
+                except urllib.error.HTTPError as e:
+                    if pages == 0 and params and "Query" in params and e.code in (400, 422):
+                        # This account doesn't accept a catalog filter: search everything instead
+                        params = {k: v for k, v in params.items() if k != "Query"}
+                        continue
+                    raise
+                items = page.get("Items", [])
+                if pages == 0 and params and "Query" in params and not items:
+                    # Catalog filter returned nothing; try again searching everything
+                    params = {k: v for k, v in params.items() if k != "Query"}
+                    continue
+                pages += 1
+                for it in items:
+                    if str(it.get("CatalogId")) == cid and _keyword_ok(it, kw):
+                        yield _flatten(it, program); got += 1
+                nxt = page.get("@nextpageuri")
+                if nxt:
+                    url, params = nxt, None
+                elif len(items) >= 100 and params is not None:
+                    page_no += 1; params = dict(params, Page=page_no)
+                else:
+                    url = ""
+            print(f"  search found {got} matching items")
+        except urllib.error.HTTPError as e:
+            print(f"  keyword search not available (HTTP {e.code})")
+        if got == 0 and scan_fallback:
+            print(f"  scanning catalog {cid} for '{kw}' instead")
+            url, params, scanned = f"{base}/Catalogs/{cid}/Items", {"PageSize": 1000}, 0
+            while url and scanned < limit:
+                try:
+                    page = api_get(url, sid, token, params)
+                except urllib.error.HTTPError as e:
+                    print(f"  stopped at {scanned} items (HTTP {e.code})"); break
+                params = None
+                for it in page.get("Items", []):
+                    scanned += 1
+                    if _keyword_ok(it, kw):
+                        yield _flatten(it, program); got += 1
+                url = page.get("@nextpageuri") or ""
+            print(f"  scanned {scanned}, kept {got}")
+
     query = env("API_QUERY")                                    # optional, e.g. DiscountPercentage > 10
     for c in cats:
         cid = str(c.get("Id"))
@@ -249,44 +301,8 @@ def iter_api_rows():
         if keywords:
             # Only products matching these keywords (e.g. "Minnesota Vikings")
             for kw in keywords:
-                got = 0
-                print(f"Searching catalog {cid} ({label or c.get('Name')}) for '{kw}'")
-                try:
-                    url, params, page_no = f"{base}/Catalogs/ItemSearch", {"Keyword": kw, "PageSize": 100, "Page": 1}, 1
-                    seen_pages = 0
-                    while url and seen_pages < 200:
-                        page = api_get(url, sid, token, params, fatal_auth=False)
-                        items = page.get("Items", [])
-                        seen_pages += 1
-                        for it in items:
-                            if str(it.get("CatalogId")) == cid and _keyword_ok(it, kw):
-                                yield _flatten(it, program); got += 1
-                        nxt = page.get("@nextpageuri")
-                        if nxt:
-                            url, params = nxt, None
-                        elif len(items) >= 100 and params is not None:
-                            page_no += 1; params = dict(params, Page=page_no)
-                        else:
-                            url = ""
-                    print(f"  search found {got} matching items")
-                except urllib.error.HTTPError as e:
-                    print(f"  keyword search not available (HTTP {e.code})")
-                if got == 0:
-                    # Fallback: scan the catalog and keep matching items
-                    print(f"  scanning catalog {cid} for '{kw}' instead")
-                    url, params, scanned = f"{base}/Catalogs/{cid}/Items", {"PageSize": 1000}, 0
-                    while url and scanned < limit:
-                        try:
-                            page = api_get(url, sid, token, params)
-                        except urllib.error.HTTPError as e:
-                            print(f"  stopped at {scanned} items (HTTP {e.code})"); break
-                        params = None
-                        for it in page.get("Items", []):
-                            scanned += 1
-                            if _keyword_ok(it, kw):
-                                yield _flatten(it, program); got += 1
-                        url = page.get("@nextpageuri") or ""
-                    print(f"  scanned {scanned}, kept {got}")
+                yield from search_catalog(cid, label or c.get("Name"), program, kw,
+                                          int(opts.get("search_pages", 200)), scan_fallback=True)
             continue
 
         print(f"Fetching items from catalog {cid} ({program})")
@@ -306,6 +322,10 @@ def iter_api_rows():
                 got += 1
             url = page.get("@nextpageuri") or ""
         print(f"  got {got} items")
+        # Optional extra keyword searches on top of the general pull (e.g. Target holiday items)
+        for kw in opts.get("search", []):
+            yield from search_catalog(cid, label or c.get("Name"), program, kw,
+                                      int(opts.get("search_pages", 50)), scan_fallback=False)
 
 
 def iter_rows(path):
@@ -441,6 +461,10 @@ def write_rss(path, name, items, now):
             out.append(f"<category>{escape(i['category'])}</category>")
         if i["image"]:
             out.append(f'<media:content url="{escape(i["image"])}" medium="image"/>')
+            # Plain image URL for Mailchimp's *|FEEDITEM:ENCLOSURE_URL|* tag
+            ext = i["image"].split("?")[0].rsplit(".", 1)[-1].lower()
+            mime = {"png": "image/png", "gif": "image/gif", "webp": "image/webp"}.get(ext, "image/jpeg")
+            out.append(f'<enclosure url="{escape(i["image"])}" type="{mime}" length="0"/>')
         out.append("</item>")
     out += ["</channel>", "</rss>"]
     with open(path, "w", encoding="utf-8") as f:
@@ -499,7 +523,13 @@ def main():
     now_dt = datetime.datetime.now(datetime.timezone.utc)
     now = email.utils.format_datetime(now_dt)
     for fname, rule in feeds.items():
-        sel = [i for i in items if matches(i, rule)][: int(rule.get("max_items", max_items))]
+        cap = int(rule.get("max_items", max_items))
+        sel = [i for i in items if matches(i, rule)][:cap]
+        if rule.get("fill") and len(sel) < cap:
+            # Top up with the same stores' best deals when there aren't enough matches
+            base_rule = {k: v for k, v in rule.items() if k in ("programs", "brands", "exclude")}
+            have = {i["id"] for i in sel}
+            sel += [i for i in items if i["id"] not in have and matches(i, base_rule)][: cap - len(sel)]
         clean = [{k: v for k, v in i.items() if not k.startswith("_")} for i in sel]
         with open(f"docs/{fname}.json", "w", encoding="utf-8") as f:
             json.dump({"feed": fname, "updated": now_dt.isoformat(), "items": clean}, f, ensure_ascii=False)
