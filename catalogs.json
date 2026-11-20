@@ -1,23 +1,71 @@
 {
-  "_note": "Catalogs to pull, by Impact catalog ID. 'keywords' limits a catalog to matching products.",
+  "_note": "Catalogs to pull, by Impact catalog ID. 'keywords' limits a catalog to matching products. 'search' adds keyword searches on top of the normal pull (used for seasonal feeds).",
   "catalogs": {
     "10636": {
-      "label": "Cabela's"
+      "label": "Cabela's",
+      "search": [
+        "Christmas",
+        "holiday",
+        "gift",
+        "ornament",
+        "stocking stuffer"
+      ]
     },
     "530": {
-      "label": "Target"
+      "label": "Target",
+      "search": [
+        "Christmas",
+        "holiday",
+        "Hanukkah",
+        "ornament",
+        "stocking stuffer",
+        "advent calendar",
+        "gift set",
+        "Santa",
+        "nutcracker"
+      ]
     },
     "21610": {
-      "label": "Best Buy"
+      "label": "Best Buy",
+      "search": [
+        "holiday",
+        "Christmas",
+        "gift",
+        "Black Friday",
+        "stocking stuffer"
+      ]
     },
     "4962": {
-      "label": "Banana Republic"
+      "label": "Banana Republic",
+      "search": [
+        "holiday",
+        "gift",
+        "cashmere",
+        "velvet",
+        "sequin",
+        "sweater"
+      ]
     },
     "4972": {
-      "label": "Gap Factory"
+      "label": "Gap Factory",
+      "search": [
+        "holiday",
+        "Christmas",
+        "pajama",
+        "gift",
+        "sweater",
+        "fleece"
+      ]
     },
     "4963": {
-      "label": "Athleta"
+      "label": "Athleta",
+      "search": [
+        "holiday",
+        "gift",
+        "fleece",
+        "sherpa",
+        "sweater"
+      ]
     },
     "5263": {
       "label": "NFL Shop",
