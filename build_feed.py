@@ -745,7 +745,12 @@ def build_offers():
     path = os.path.join(HERE, "offers.json")
     if not os.path.exists(path):
         return {}
-    conf = {k: v for k, v in json.load(open(path, encoding="utf-8")).items() if not k.startswith("_")}
+    raw_conf = json.load(open(path, encoding="utf-8"))
+    conf = {k: v for k, v in raw_conf.items() if not k.startswith("_")}
+    # "_titles": {"part of the ad's name": "Your headline"} applies to every offers feed;
+    # "_hide": ["part of an ad's name", ...] leaves those ads out everywhere.
+    titles = {k.lower(): v for k, v in (raw_conf.get("_titles") or {}).items()}
+    hide = [h.lower() for h in (raw_conf.get("_hide") or [])]
     sid, token = env("IMPACT_ACCOUNT_SID"), env("IMPACT_AUTH_TOKEN")
     today = datetime.date.today().isoformat()
     result, cache = {}, {}
@@ -766,6 +771,9 @@ def build_offers():
                         print(f"  ads for campaign {camp}: HTTP {e.code}")
                 if ads:
                     print(f"Offers: campaign {camp} has {len(ads)} ads; ad fields: {sorted(ads[0].keys())[:25]}")
+                    for a in ads[:40]:
+                        print(f"    ad: {str(_first(a, 'Name'))[:70]} | {str(_first(a, 'AdType', 'Type'))} | "
+                              f"{str(_first(a, 'LinkText', 'Description'))[:70]}")
                 cache[camp] = ads
             for ad in cache[camp]:
                 link = _first(ad, "TrackingLink", "TrackingUrl", "Url")
@@ -778,7 +786,14 @@ def build_offers():
                 image = _first(ad, "CreativeUrl", "ImageUrl", "IconUrl")
                 if image and (w and w < 200 or h and h < 100):        # skip tiny banners
                     image = ""
-                title = _first(ad, "LinkText", "Name", "Description")
+                title = str(_first(ad, "LinkText", "Name", "Description"))
+                ad_name = (str(_first(ad, "Name")) + " " + title).lower()
+                if any(h in ad_name for h in hide):
+                    continue
+                for part, headline in {**titles, **{k.lower(): v for k, v in (spec.get("titles") or {}).items()}}.items():
+                    if part in ad_name:
+                        title = headline
+                        break
                 offers.append({"id": f"ad-{ad.get('Id', link)}", "name": str(title)[:140], "url": link, "image": image,
                                "brand": _first(ad, "CampaignName") or spec.get("label", ""),
                                "price": None, "orig": None, "discount": 0, "currency": "USD",
