@@ -1,0 +1,25 @@
+{
+  "_how": "Feeds for brands without product catalogs (services). Each feed lists Impact campaign (program) IDs; the script pulls that brand's current ads (banners and text links) with your tracking links. You can also add offers by hand under 'items' with a title, url (an Impact tracking link) and optional image/description.",
+  "justanswer": {
+    "label": "JustAnswer",
+    "campaigns": [
+      9320
+    ],
+    "max_items": 10
+  },
+  "rocketlawyer": {
+    "label": "Rocket Lawyer",
+    "campaigns": [
+      59223
+    ],
+    "max_items": 10
+  },
+  "services": {
+    "label": "Expert help",
+    "campaigns": [
+      9320,
+      59223
+    ],
+    "max_items": 12
+  }
+}
