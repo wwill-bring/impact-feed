@@ -739,6 +739,32 @@ def _first(d, *keys):
     return ""
 
 
+_KEEP_JOINED = {"JustAnswer", "LinkedIn", "YouTube", "PayPal", "TurboTax", "QuickBooks"}
+
+
+def clean_ad_title(t):
+    """Tidy an ad's built-in name into a readable headline:
+    'Home ImprovementExpert - 320x320 banner' -> 'Home Improvement Expert';
+    'Ask Antique Experts @ askantiqueexperts.com - Banner 336x280' -> 'Ask Antique Experts'."""
+    t = str(t or "")
+    # Drop everything from a spaced dash or bar onward ("Ask a Mechanic - 728x90 v2" -> "Ask a Mechanic"),
+    # as long as a real headline is left. Hyphens inside words ("24-hour", "e-file") are kept.
+    head = re.split(r"\s+[-–—|]\s*|\s*[-–—|]\s+|[–—|]", t, maxsplit=1)[0].strip()
+    if len(head) >= 8 and " " in head:
+        t = head
+    t = re.sub(r"\b\d{2,4}\s*[x×]\s*\d{2,4}\b", " ", t)                       # sizes like 300x250
+    t = re.sub(r"\s*@\s*[\w.-]+\.(com|net|org|co|io)\b", " ", t, flags=re.I)        # "@ site.com"
+    t = re.sub(r"\b(design|version|v)\s*\d+\b", " ", t, flags=re.I)               # "Design 3", "v2"
+    t = re.sub(r"\b(banners?|static|animated|gif|creative|leaderboard|skyscraper|ad unit)\b", " ", t, flags=re.I)
+    t = re.sub(r"\b(\w+)\b", lambda m: m.group(1) if m.group(1) in _KEEP_JOINED
+               else re.sub(r"([a-z]{3,})([A-Z][a-z]{2,})", r"\1 \2", m.group(1)), t)  # "ImprovementExpert"
+    t = re.sub(r"\s+", " ", t)
+    t = re.sub(r"(\s*[-|:,/_]\s*)+$", "", t)                                      # dangling separators
+    t = re.sub(r"^(\s*[-|:,/_]\s*)+", "", t)
+    t = re.sub(r"\s+[-|:]\s+(?=[-|:])", " ", t).strip(" -|:,")
+    return t.strip()
+
+
 def build_offers():
     """Feeds made from a brand's Impact ads (banners and text links), for services like JustAnswer or Rocket Lawyer
     that don't have product catalogs. offers.json: {"feed-name": {"campaigns": [9320, ...], "items": [manual offers]}}"""
@@ -788,6 +814,7 @@ def build_offers():
                     image = ""
                 title = str(_first(ad, "LinkText", "Name", "Description"))
                 ad_name = (str(_first(ad, "Name")) + " " + title).lower()
+                title = clean_ad_title(title) or title
                 if any(h in ad_name for h in hide):
                     continue
                 for part, headline in {**titles, **{k.lower(): v for k, v in (spec.get("titles") or {}).items()}}.items():
