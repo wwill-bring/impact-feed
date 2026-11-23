@@ -433,5 +433,79 @@
       "egift"
     ],
     "fill": true
+  },
+  "vikings-jerseys": {
+    "programs": [
+      "nfl shop"
+    ],
+    "include": [
+      "jersey"
+    ]
+  },
+  "twins-hats": {
+    "programs": [
+      "mlb shop"
+    ],
+    "include": [
+      "hat",
+      "cap",
+      "snapback",
+      "fitted",
+      "beanie",
+      "knit"
+    ],
+    "exclude": [
+      "captain"
+    ]
+  },
+  "target-ornaments": {
+    "programs": [
+      "target"
+    ],
+    "include": [
+      "ornament"
+    ]
+  },
+  "bestbuy-tvs": {
+    "programs": [
+      "best buy"
+    ],
+    "include": [
+      "tv",
+      "tvs",
+      "television",
+      "oled",
+      "qled"
+    ],
+    "exclude": [
+      "mount",
+      "stand",
+      "cable",
+      "remote",
+      "antenna",
+      "tv tray"
+    ]
+  },
+  "cabelas-ice-fishing": {
+    "programs": [
+      "cabela"
+    ],
+    "include": [
+      "ice fishing",
+      "ice auger",
+      "auger",
+      "tip-up",
+      "ice shelter",
+      "ice rod",
+      "ice fishing rod"
+    ]
+  },
+  "bananarepublic-cashmere": {
+    "programs": [
+      "banana republic"
+    ],
+    "include": [
+      "cashmere"
+    ]
   }
 }
