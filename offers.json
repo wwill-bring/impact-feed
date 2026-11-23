@@ -1,5 +1,10 @@
 {
-  "_how": "Feeds for brands without product catalogs (services). Each feed lists Impact campaign (program) IDs; the script pulls that brand's current ads (banners and text links) with your tracking links. You can also add offers by hand under 'items' with a title, url (an Impact tracking link) and optional image/description.",
+  "_how": "Feeds for brands without product catalogs (services). Each feed lists Impact campaign (program) IDs; the script pulls that brand's current ads (banners and text links) with your tracking links. You can also add offers by hand under 'items' with a title, url (an Impact tracking link) and optional image/description. Use '_titles' to replace an ad's built-in name with your own headline (matched on part of the ad name, so one entry covers 'Design 2', 'Design 3', etc.), and '_hide' to leave ads out. Ads that end up with the same headline are shown once.",
+  "_titles": {
+    "Business Registration": "Starting a business? Form your LLC with Rocket Lawyer",
+    "Legal Advice": "Have a legal question? Talk to a lawyer with Rocket Lawyer"
+  },
+  "_hide": [],
   "justanswer": {
     "label": "JustAnswer",
     "campaigns": [
