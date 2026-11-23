@@ -1,5 +1,7 @@
 {
-  "all": {},
+  "all": {
+    "sort": "earnings"
+  },
   "sports": {
     "programs": [
       "nfl shop",
@@ -140,7 +142,8 @@
   "tech": {
     "programs": [
       "best buy"
-    ]
+    ],
+    "sort": "payout"
   },
   "fashion": {
     "programs": [
@@ -157,12 +160,14 @@
   "target": {
     "programs": [
       "target"
-    ]
+    ],
+    "sort": "payout"
   },
   "bestbuy": {
     "programs": [
       "best buy"
-    ]
+    ],
+    "sort": "payout"
   },
   "bananarepublic": {
     "programs": [
@@ -222,7 +227,8 @@
       "gift card",
       "egift"
     ],
-    "fill": true
+    "fill": true,
+    "sort": "earnings"
   },
   "target-holiday": {
     "programs": [
@@ -254,7 +260,8 @@
       "gift card",
       "egift"
     ],
-    "fill": true
+    "fill": true,
+    "sort": "payout"
   },
   "bestbuy-holiday": {
     "programs": [
@@ -286,7 +293,8 @@
       "gift card",
       "egift"
     ],
-    "fill": true
+    "fill": true,
+    "sort": "payout"
   },
   "bananarepublic-holiday": {
     "programs": [
@@ -488,21 +496,17 @@
     "programs": [
       "best buy"
     ],
-    "include": [
-      "tv",
-      "tvs",
-      "television",
-      "oled",
-      "qled"
+    "departments": [
+      "tvs"
     ],
     "exclude": [
       "mount",
       "stand",
       "cable",
       "remote",
-      "antenna",
-      "tv tray"
-    ]
+      "antenna"
+    ],
+    "sort": "payout"
   },
   "cabelas-ice-fishing": {
     "programs": [
@@ -524,6 +528,125 @@
     ],
     "include": [
       "cashmere"
+    ]
+  },
+  "bestbuy-top-payout": {
+    "programs": [
+      "best buy"
+    ],
+    "min_payout": 7,
+    "sort": "payout"
+  },
+  "bestbuy-appliances": {
+    "programs": [
+      "best buy"
+    ],
+    "departments": [
+      "appliances"
+    ],
+    "sort": "payout"
+  },
+  "bestbuy-headphones": {
+    "programs": [
+      "best buy"
+    ],
+    "departments": [
+      "headphones"
+    ],
+    "sort": "payout"
+  },
+  "bestbuy-smart-home": {
+    "programs": [
+      "best buy"
+    ],
+    "departments": [
+      "smart home"
+    ],
+    "sort": "payout"
+  },
+  "bestbuy-gaming-gear": {
+    "programs": [
+      "best buy"
+    ],
+    "departments": [
+      "pc gaming accessories",
+      "video game accessories",
+      "virtual reality"
+    ],
+    "min_payout": 6,
+    "sort": "payout"
+  },
+  "target-home": {
+    "programs": [
+      "target"
+    ],
+    "departments": [
+      "home",
+      "decor",
+      "lamp",
+      "wall",
+      "bath",
+      "bedding",
+      "bed ",
+      "sheets",
+      "pillow",
+      "blanket",
+      "kitchen",
+      "dining",
+      "dinnerware",
+      "cookware",
+      "furniture",
+      "storage",
+      "organization",
+      "patio",
+      "garden",
+      "outdoor living",
+      "rug",
+      "curtain",
+      "window",
+      "candle",
+      "frame",
+      "art",
+      "tabletop",
+      "towel"
+    ],
+    "sort": "payout"
+  },
+  "target-apparel": {
+    "programs": [
+      "target"
+    ],
+    "departments": [
+      "apparel",
+      "clothing",
+      "shoes",
+      "accessories",
+      "jewelry",
+      "handbag",
+      "women",
+      "men",
+      "boys",
+      "girls",
+      "intimates",
+      "sleepwear",
+      "swim",
+      "outerwear",
+      "socks",
+      "hats"
+    ],
+    "sort": "payout"
+  },
+  "target-top-payout": {
+    "programs": [
+      "target"
+    ],
+    "min_payout": 5,
+    "sort": "payout"
+  },
+  "top-earners": {
+    "sort": "earnings",
+    "exclude": [
+      "gift card"
     ]
   }
 }
