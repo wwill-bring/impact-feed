@@ -1,0 +1,6 @@
+{
+  "_how": "Each list becomes a feed named after it (e.g. gift-guide-2026.xml). Add products as tracking links from Impact, store product page links, catalog:item IDs like 530:94307167, or a product name. Order is kept; sold-out items are skipped automatically.",
+  "editor-picks": [
+    "https://goto.target.com/c/1409449/78775/2092?prodsku=94307167&u=https%3A%2F%2Fwww.target.com%2Fp%2Fglo24k-6-in-1-beauty-therapy-wand-for-face-eyes-and-neck%2F-%2FA-94307167&intsrc=APIG_530"
+  ]
+}
