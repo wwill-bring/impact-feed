@@ -149,6 +149,7 @@ def fetch_from_ftp():
 # ---------- Impact API (used when IMPACT_ACCOUNT_SID is set) ----------
 
 API_BASE = "https://api.impact.com"
+CATALOG_INFO = {}          # catalog id -> program label (filled while downloading)
 
 
 def api_get(path_or_url, sid, token, params=None, fatal_auth=True):
@@ -217,6 +218,12 @@ def iter_api_rows():
         print(f"  {c.get('Id')}: {c.get('Name')} ({c.get('AdvertiserName')}, {c.get('NumberOfItems')} items)")
 
     conf = load_catalog_config()
+    for c in all_cats:
+        o = (conf or {}).get(str(c.get("Id")), {})
+        CATALOG_INFO[str(c.get("Id"))] = {
+            "program": " ".join(dict.fromkeys(x for x in (o.get("label", ""), str(c.get("AdvertiserName") or ""),
+                       str(c.get("CampaignName") or ""), str(c.get("Name") or "")) if x)).strip(),
+            "selected": bool(conf) and str(c.get("Id")) in conf}
     if conf:
         print(f"Using catalogs.json ({len(conf)} catalogs)")
         cats = [c for c in all_cats if str(c.get("Id")) in conf]
@@ -370,6 +377,20 @@ def track(url):
     return tpl.replace("{url}", urllib.parse.quote(url, safe=""))
 
 
+def _destination(url):
+    """The store page behind a tracking link (its u= parameter), else the link itself."""
+    q = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+    return q["u"][0] if "u" in q else url
+
+
+def _norm_url(u):
+    u = (u or "").strip().lower().split("#")[0].split("?")[0]
+    for pre in ("https://", "http://", "www."):
+        if u.startswith(pre):
+            u = u[len(pre):]
+    return u.rstrip("/")
+
+
 def to_item(r):
     name, url = pick(r, "name"), pick(r, "url")
     if not name or not url:
@@ -398,6 +419,9 @@ def to_item(r):
         "_stock": pick(r, "stock").lower().replace(" ", "").replace("_", ""),
         "_launch": pick(r, "launch"),
         "program": r.get("_program", ""),
+        "_cid": r.get("catalogid", ""),
+        "_sku": (r.get("catalogitemid") or r.get("unique merchant sku") or r.get("sku") or "").strip().lower(),
+        "_dest": _norm_url(_destination(url)),
         "_text": " ".join([name, pick(r, "brand"), pick(r, "category"), pick(r, "ptype"), pick(r, "labels")]).lower(),
     }
 
@@ -471,6 +495,113 @@ def write_rss(path, name, items, now):
         f.write("\n".join(out))
 
 
+# ---------- hand-picked products (picks.json) ----------
+
+def _parse_pick(p):
+    p = str(p).strip()
+    out = {"raw": p, "cid": "", "sku": "", "dest": "", "text": ""}
+    if p.lower().startswith("http"):
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(p).query)
+        dest = q["u"][0] if "u" in q else p
+        out["dest"] = _norm_url(dest)
+        out["sku"] = (q.get("prodsku", [""])[0]).lower()
+        m = re.search(r"APIG_(\d+)", p)
+        out["cid"] = m.group(1) if m else ""
+        if not out["sku"]:
+            m = re.search(r"/A-(\d+)", dest)            # Target product pages
+            out["sku"] = m.group(1) if m else ""
+    elif re.fullmatch(r"\d+:\S+", p):                   # catalog:item, e.g. 530:94307167
+        out["cid"], out["sku"] = p.split(":", 1)
+        out["sku"] = out["sku"].lower()
+    else:
+        out["text"] = p                                  # a product name to search for
+    return out
+
+
+def resolve_picks(items, in_stock_only, ok_stock):
+    path = os.path.join(HERE, "picks.json")
+    if not os.path.exists(path):
+        return {}
+    conf = {k: v for k, v in json.load(open(path, encoding="utf-8")).items() if not k.startswith("_")}
+    if not conf:
+        return {}
+    by_cid_sku, by_sku, by_dest, by_id = {}, {}, {}, {}
+    for i in items:
+        if i["_sku"]:
+            by_cid_sku[(str(i["_cid"]), i["_sku"])] = i
+            by_sku.setdefault(i["_sku"], i)
+        if i["_dest"]:
+            by_dest.setdefault(i["_dest"], i)
+        by_id[str(i["id"]).lower()] = i
+    sid, token = env("IMPACT_ACCOUNT_SID"), env("IMPACT_AUTH_TOKEN")
+
+    def api_item(it_json, cid):
+        info = CATALOG_INFO.get(str(cid), {})
+        it = to_item(_flatten(it_json, info.get("program", "")))
+        return it
+
+    def lookup(pk):
+        if pk["sku"]:
+            hit = by_cid_sku.get((pk["cid"], pk["sku"])) or (by_sku.get(pk["sku"]) if not pk["cid"] else None)
+            if hit:
+                return hit
+        if pk["dest"] and pk["dest"] in by_dest:
+            return by_dest[pk["dest"]]
+        if pk["raw"].lower() in by_id:
+            return by_id[pk["raw"].lower()]
+        if not (sid and token):
+            return None
+        base = f"/Mediapartners/{sid}/Catalogs"
+        try:
+            if pk["cid"] and pk["sku"]:
+                try:
+                    data = api_get(f"{base}/{pk['cid']}/Items/{urllib.parse.quote(pk['sku'])}", sid, token, fatal_auth=False)
+                    data = (data.get("Items") or [data])[0] if isinstance(data, dict) else None
+                    if data and data.get("Name"):
+                        return api_item(data, pk["cid"])
+                except urllib.error.HTTPError:
+                    pass
+                data = api_get(f"{base}/ItemSearch", sid, token,
+                               {"Keyword": pk["sku"], "PageSize": 100, "Query": f"CatalogId = {pk['cid']}"}, fatal_auth=False)
+                for it in data.get("Items", []):
+                    if str(it.get("CatalogId")) == pk["cid"] and pk["sku"] in (
+                            str(it.get("CatalogItemId", "")).lower(), str(it.get("Id", "")).lower().split("-")[-1]):
+                        return api_item(it, pk["cid"])
+            term = pk["text"] or ""
+            if term:
+                data = api_get(f"{base}/ItemSearch", sid, token, {"Keyword": term, "PageSize": 100}, fatal_auth=False)
+                for it in data.get("Items", []):
+                    cid = str(it.get("CatalogId"))
+                    if CATALOG_INFO.get(cid, {}).get("selected") and _keyword_ok(it, term):
+                        cand = api_item(it, cid)
+                        if cand and (not in_stock_only or cand["_stock"] in ok_stock):
+                            return cand
+        except urllib.error.HTTPError as e:
+            print(f"    lookup error (HTTP {e.code})")
+        return None
+
+    result = {}
+    for fname, spec in conf.items():
+        entries = spec.get("items", []) if isinstance(spec, dict) else spec
+        chosen, seen_ids = [], set()
+        print(f"Picks '{fname}': {len(entries)} listed")
+        for raw in entries:
+            pk = _parse_pick(raw)
+            it = lookup(pk)
+            if not it:
+                print(f"  not found: {pk['raw'][:90]}")
+                continue
+            if in_stock_only and it["_stock"] not in ok_stock:
+                print(f"  out of stock, skipped: {it['name'][:70]}")
+                continue
+            if it["id"] in seen_ids:
+                continue
+            seen_ids.add(it["id"])
+            chosen.append(it)
+        result[fname] = chosen
+    return result
+
+
 def main():
     local = [p.strip() for p in env("LOCAL_FILE").split(",") if p.strip()]
     downloaded = []
@@ -535,6 +666,15 @@ def main():
             json.dump({"feed": fname, "updated": now_dt.isoformat(), "items": clean}, f, ensure_ascii=False)
         write_rss(f"docs/{fname}.xml", fname, sel, now)
         print(f"Feed '{fname}': {len(sel)} items -> docs/{fname}.json, docs/{fname}.xml")
+
+    for fname, sel in resolve_picks(items, in_stock_only, ok_stock).items():
+        if fname in feeds:
+            print(f"WARNING: picks list '{fname}' has the same name as a feeds.json topic; the picks list wins")
+        clean = [{k: v for k, v in i.items() if not k.startswith("_")} for i in sel]
+        with open(f"docs/{fname}.json", "w", encoding="utf-8") as f:
+            json.dump({"feed": fname, "updated": now_dt.isoformat(), "items": clean}, f, ensure_ascii=False)
+        write_rss(f"docs/{fname}.xml", fname, sel, now)
+        print(f"Picks feed '{fname}': {len(sel)} items -> docs/{fname}.json, docs/{fname}.xml")
 
 
 if __name__ == "__main__":
