@@ -150,6 +150,11 @@ def fetch_from_ftp():
 
 API_BASE = "https://api.impact.com"
 CATALOG_INFO = {}          # catalog id -> program label (filled while downloading)
+BOOSTED = set()            # catalog ids whose products are shown first ("boost": true)
+SURVEY = {}                # catalog id -> {field: {value: count}} for spotting popularity fields
+SURVEY_FIELDS = ("labels", "text1", "text2", "text3", "numeric1", "numeric2", "numeric3",
+                 "money1", "money2", "money3", "productbid", "condition")
+SURVEY_HINTS = ("rank", "rating", "review", "popular", "best", "seller", "featured", "score")
 
 
 def api_get(path_or_url, sid, token, params=None, fatal_auth=True):
@@ -188,6 +193,17 @@ def _flatten(it, program):
             v = ""
         row[k.lower()] = str(v)
     row["_program"] = program
+    cid = str(it.get("CatalogId", ""))
+    row["_boost"] = "1" if cid in BOOSTED else ""
+    # Tally a sample of custom fields so we can see which ones signal popularity
+    if cid:
+        cat = SURVEY.setdefault(cid, {"_n": 0})
+        if cat["_n"] < 3000:
+            cat["_n"] += 1
+            for k, v in row.items():
+                if v and not k.startswith("_") and (k in SURVEY_FIELDS or any(h in k for h in SURVEY_HINTS)):
+                    vals = cat.setdefault(k, {})
+                    vals[v[:40]] = vals.get(v[:40], 0) + 1
     return row
 
 
@@ -225,6 +241,7 @@ def iter_api_rows():
                        str(c.get("CampaignName") or ""), str(c.get("Name") or "")) if x)).strip(),
             "selected": bool(conf) and str(c.get("Id")) in conf}
     if conf:
+        BOOSTED.update(k for k, v in conf.items() if isinstance(v, dict) and v.get("boost"))
         print(f"Using catalogs.json ({len(conf)} catalogs)")
         cats = [c for c in all_cats if str(c.get("Id")) in conf]
         missing = set(conf) - {str(c.get("Id")) for c in cats}
@@ -309,7 +326,8 @@ def iter_api_rows():
             # Only products matching these keywords (e.g. "Minnesota Vikings")
             for kw in keywords:
                 yield from search_catalog(cid, label or c.get("Name"), program, kw,
-                                          int(opts.get("search_pages", 200)), scan_fallback=True)
+                                          int(opts.get("search_pages", 200)),
+                                          scan_fallback=not opts.get("boost"))
             continue
 
         print(f"Fetching items from catalog {cid} ({program})")
@@ -420,6 +438,7 @@ def to_item(r):
         "_launch": pick(r, "launch"),
         "program": r.get("_program", ""),
         "_cid": r.get("catalogid", ""),
+        "_boost": r.get("_boost") == "1",
         "_sku": (r.get("catalogitemid") or r.get("unique merchant sku") or r.get("sku") or "").strip().lower(),
         "_dest": _norm_url(_destination(url)),
         "_text": " ".join([name, pick(r, "brand"), pick(r, "category"), pick(r, "ptype"), pick(r, "labels")]).lower(),
@@ -644,6 +663,19 @@ def main():
         items.sort(key=lambda i: i["discount"], reverse=True)
     elif sort_by == "newest":
         items.sort(key=lambda i: i["_launch"], reverse=True)
+    items.sort(key=lambda i: i["_boost"], reverse=True)   # "boost" catalogs (e.g. Fanatics Top Products) first
+
+    if SURVEY:
+        print("Field survey (sample of each catalog; looking for popularity signals):")
+        for cid, fields in SURVEY.items():
+            name = CATALOG_INFO.get(cid, {}).get("program", cid)[:45]
+            parts = []
+            for k, vals in fields.items():
+                if k == "_n":
+                    continue
+                top = sorted(vals.items(), key=lambda kv: -kv[1])[:3]
+                parts.append(f"{k}=" + " | ".join(f"{v} ({n})" for v, n in top))
+            print(f"  {cid} {name}: " + ("; ".join(parts) if parts else "no custom fields filled"))
 
     cfg_path = os.path.join(HERE, "feeds.json")
     feeds = json.load(open(cfg_path)) if os.path.exists(cfg_path) else {"all": {}}
@@ -655,7 +687,14 @@ def main():
     now = email.utils.format_datetime(now_dt)
     for fname, rule in feeds.items():
         cap = int(rule.get("max_items", max_items))
-        sel = [i for i in items if matches(i, rule)][:cap]
+        sel, names = [], set()
+        for i in items:
+            if len(sel) >= cap:
+                break
+            key = i["name"].strip().lower()
+            if key not in names and matches(i, rule):
+                names.add(key)
+                sel.append(i)
         if rule.get("fill") and len(sel) < cap:
             # Top up with the same stores' best deals when there aren't enough matches
             base_rule = {k: v for k, v in rule.items() if k in ("programs", "brands", "exclude")}
