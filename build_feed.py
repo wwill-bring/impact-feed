@@ -151,6 +151,7 @@ def fetch_from_ftp():
 API_BASE = "https://api.impact.com"
 CATALOG_INFO = {}          # catalog id -> program label (filled while downloading)
 BOOSTED = set()            # catalog ids whose products are shown first ("boost": true)
+DEPT_FIELD = {}            # catalog id -> field that holds the store's department (catalogs.json "department_field")
 SURVEY = {}                # catalog id -> {field: {value: count}} for spotting popularity fields
 SURVEY_FIELDS = ("labels", "text1", "text2", "text3", "numeric1", "numeric2", "numeric3",
                  "money1", "money2", "money3", "productbid", "condition")
@@ -184,6 +185,26 @@ def api_get(path_or_url, sid, token, params=None, fatal_auth=True):
             raise
 
 
+def _department_path(v):
+    """Turn a store's category value into a clean department path, e.g.
+    'Best Buy > TV & Home Theater > TVs' -> 'TV & Home Theater > TVs';
+    '74-12, , Framed Art' -> 'Framed Art'."""
+    v = (v or "").strip()
+    if not v:
+        return ""
+    if ">" in v:
+        parts = [x.strip() for x in v.split(">") if x.strip()]
+        if parts and parts[0].lower() in ("best buy", "home", "all"):
+            parts = parts[1:]
+        return " > ".join(parts).split(",")[0].strip()
+    if "~" in v:
+        return " > ".join(x.strip() for x in v.split("~") if x.strip())
+    if "," in v:
+        parts = [x.strip() for x in v.split(",") if x.strip() and not re.fullmatch(r"[\d-]+", x.strip())]
+        return parts[-1] if parts else ""
+    return v
+
+
 def _flatten(it, program):
     row = {}
     for k, v in it.items():
@@ -195,6 +216,8 @@ def _flatten(it, program):
     row["_program"] = program
     cid = str(it.get("CatalogId", ""))
     row["_boost"] = "1" if cid in BOOSTED else ""
+    row["_deptpath"] = _department_path(row.get(DEPT_FIELD.get(cid, "category"), "") or row.get("category", ""))
+    row["_cattext"] = " | ".join(row.get(k, "") for k in ("category", "subcategory", "text1", "text2", "text3") if row.get(k))
     # Tally a sample of custom fields so we can see which ones signal popularity
     if cid:
         cat = SURVEY.setdefault(cid, {"_n": 0})
@@ -242,6 +265,8 @@ def iter_api_rows():
             "selected": bool(conf) and str(c.get("Id")) in conf}
     if conf:
         BOOSTED.update(k for k, v in conf.items() if isinstance(v, dict) and v.get("boost"))
+        DEPT_FIELD.update({k: v["department_field"].lower() for k, v in conf.items()
+                           if isinstance(v, dict) and v.get("department_field")})
         print(f"Using catalogs.json ({len(conf)} catalogs)")
         cats = [c for c in all_cats if str(c.get("Id")) in conf]
         missing = set(conf) - {str(c.get("Id")) for c in cats}
@@ -328,6 +353,13 @@ def iter_api_rows():
                 yield from search_catalog(cid, label or c.get("Name"), program, kw,
                                           int(opts.get("search_pages", 200)),
                                           scan_fallback=not opts.get("boost"))
+            continue
+
+        if opts.get("pull", True) is False:
+            print(f"Skipping general download for catalog {cid} ({label or c.get('Name')}); using its searches")
+            for kw in opts.get("search", []):
+                yield from search_catalog(cid, label or c.get("Name"), program, kw,
+                                          int(opts.get("search_pages", 50)), scan_fallback=False)
             continue
 
         print(f"Fetching items from catalog {cid} ({program})")
@@ -433,6 +465,10 @@ def to_item(r):
         "currency": pick(r, "currency") or cur1 or cur2 or "USD",
         "coupon": pick(r, "coupon"),
         "category": pick(r, "category"),
+        "department": (r.get("_deptpath") or "").split(" > ")[0],
+        "_deptpath": (r.get("_deptpath") or "").lower(),
+        "_cattext": (r.get("_cattext") or "").lower(),
+        "_rate": None,
         "desc": desc[:300] + ("…" if len(desc) > 300 else ""),
         "_stock": pick(r, "stock").lower().replace(" ", "").replace("_", ""),
         "_launch": pick(r, "launch"),
@@ -451,6 +487,11 @@ def matches(item, rule):
     brands = [b.lower() for b in rule.get("brands", [])]
     programs = [p.lower().replace("'", "") for p in rule.get("programs", [])]
     if programs and not any(p in item.get("program", "").lower().replace("'", "") for p in programs):
+        return False
+    depts = [d.lower() for d in rule.get("departments", [])]
+    if depts and not any(d in item.get("_deptpath", "") or d in item.get("_cattext", "") for d in depts):
+        return False
+    if "min_payout" in rule and (item.get("_rate") is None or item["_rate"] < float(rule["min_payout"])):
         return False
     t = item["_text"]
     has = lambda w: re.search(r"\b" + re.escape(w), t) is not None   # word-start match
@@ -500,8 +541,8 @@ def write_rss(path, name, items, now):
         out += ["<item>", f"<title>{escape(t)}</title>", f"<link>{escape(i['url'])}</link>",
                 f'<guid isPermaLink="false">{escape(i["id"])}</guid>', f"<pubDate>{now}</pubDate>",
                 f"<description><![CDATA[{''.join(body)}]]></description>"]
-        if i["category"]:
-            out.append(f"<category>{escape(i['category'])}</category>")
+        if i.get("department") or i["category"]:
+            out.append(f"<category>{escape(i.get('department') or i['category'])}</category>")
         if i["image"]:
             out.append(f'<media:content url="{escape(i["image"])}" medium="image"/>')
             # Plain image URL for Mailchimp's *|FEEDITEM:ENCLOSURE_URL|* tag
@@ -621,6 +662,148 @@ def resolve_picks(items, in_stock_only, ok_stock):
     return result
 
 
+# ---------- estimated payouts (payout rules from each brand's contract) ----------
+
+def load_payout_rules():
+    """Rules come from the PAYOUT_RULES secret (keeps contract rates private), else payouts.json."""
+    raw = env("PAYOUT_RULES")
+    if not raw:
+        path = os.path.join(HERE, "payouts.json")
+        if os.path.exists(path):
+            raw = open(path, encoding="utf-8").read()
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except ValueError as e:
+        print(f"WARNING: payout rules aren't valid JSON ({e}); ignoring them")
+        return {}
+    return {str(k): v for k, v in data.items() if not str(k).startswith("_")}
+
+
+def _rule_hits(item, cond):
+    brand = (item.get("brand") or "").lower()
+    cats = item.get("_cattext", "") + " | " + item.get("_deptpath", "")
+    for key, val in cond.items():
+        val = str(val).lower()
+        if key == "brand" and re.search(r"(?<![a-z0-9])" + re.escape(val.strip()) + r"(?![a-z0-9])", brand) is None:
+            return False
+        if key in ("category", "subcategory", "text1", "text2", "text3") and not _starts_word(val, cats):
+            return False
+    return True
+
+
+def _starts_word(val, text):
+    """True if val appears in text starting at a word boundary ('art' matches 'Art Prints', not 'Smart')."""
+    return re.search(r"(?<![a-z0-9])" + re.escape(val.strip()), text) is not None
+
+
+def apply_payouts(items):
+    rules = load_payout_rules()
+    if not rules:
+        return items
+    kept, dropped = [], {}
+    for i in items:
+        r = rules.get(str(i.get("_cid")))
+        if not r:
+            kept.append(i)
+            continue
+        cats = i.get("_cattext", "") + " | " + i.get("_deptpath", "")
+        if any(_starts_word(str(x).lower(), cats) for x in r.get("none", [])):
+            rate = None
+        else:
+            hits = [float(x["rate"]) for x in r.get("rules", [])
+                    if _rule_hits(i, {k: v for k, v in x.items() if k != "rate"})]
+            base = float(r.get("base", 0))
+            promo = [h for h in hits if h > base]
+            # A higher-paying rule wins; otherwise the lowest matching rule (e.g. 0% or 1%); otherwise the base rate
+            rate = max(promo) if promo else (min(hits) if hits else base)
+        i["_rate"] = rate
+        if r.get("drop_zero", True) and not rate:
+            dropped[i["_cid"]] = dropped.get(i["_cid"], 0) + 1
+            continue
+        kept.append(i)
+    for cid, n in dropped.items():
+        print(f"Payout rules: left out {n} catalog {cid} products that earn no commission")
+    return kept
+
+
+# ---------- service brands without product catalogs (offers.json) ----------
+
+def _first(d, *keys):
+    for k in keys:
+        for kk in (k, k.lower()):
+            v = d.get(kk)
+            if v not in (None, "", [], {}):
+                return v
+    return ""
+
+
+def build_offers():
+    """Feeds made from a brand's Impact ads (banners and text links), for services like JustAnswer or Rocket Lawyer
+    that don't have product catalogs. offers.json: {"feed-name": {"campaigns": [9320, ...], "items": [manual offers]}}"""
+    path = os.path.join(HERE, "offers.json")
+    if not os.path.exists(path):
+        return {}
+    conf = {k: v for k, v in json.load(open(path, encoding="utf-8")).items() if not k.startswith("_")}
+    sid, token = env("IMPACT_ACCOUNT_SID"), env("IMPACT_AUTH_TOKEN")
+    today = datetime.date.today().isoformat()
+    result, cache = {}, {}
+    for fname, spec in conf.items():
+        offers = []
+        for camp in spec.get("campaigns", []):
+            camp = str(camp.get("id") if isinstance(camp, dict) else camp)
+            if camp not in cache:
+                ads = []
+                if sid and token:
+                    url, params = f"/Mediapartners/{sid}/Ads", {"CampaignId": camp, "PageSize": 200}
+                    try:
+                        while url and len(ads) < 1000:
+                            page = api_get(url, sid, token, params, fatal_auth=False)
+                            ads += page.get("Ads", []) or page.get("ads", [])
+                            url, params = page.get("@nextpageuri") or "", None
+                    except urllib.error.HTTPError as e:
+                        print(f"  ads for campaign {camp}: HTTP {e.code}")
+                if ads:
+                    print(f"Offers: campaign {camp} has {len(ads)} ads; ad fields: {sorted(ads[0].keys())[:25]}")
+                cache[camp] = ads
+            for ad in cache[camp]:
+                link = _first(ad, "TrackingLink", "TrackingUrl", "Url")
+                if not link or str(_first(ad, "AdType", "Type")).upper() in ("COUPON_ONLY", "PRODUCT_CATALOG"):
+                    continue
+                end = str(_first(ad, "EndDate", "EndDateTime"))[:10]
+                if end and end < today:
+                    continue
+                w, h = num(_first(ad, "Width"))[0] or 0, num(_first(ad, "Height"))[0] or 0
+                image = _first(ad, "CreativeUrl", "ImageUrl", "IconUrl")
+                if image and (w and w < 200 or h and h < 100):        # skip tiny banners
+                    image = ""
+                title = _first(ad, "LinkText", "Name", "Description")
+                offers.append({"id": f"ad-{ad.get('Id', link)}", "name": str(title)[:140], "url": link, "image": image,
+                               "brand": _first(ad, "CampaignName") or spec.get("label", ""),
+                               "price": None, "orig": None, "discount": 0, "currency": "USD",
+                               "coupon": _first(ad, "DiscountCode", "PromoCode"), "category": spec.get("label", ""),
+                               "department": spec.get("label", ""), "desc": str(_first(ad, "Description"))[:300],
+                               "program": spec.get("label", ""), "_score": (1 if image else 0, -abs((w or 600) - 600))})
+        for m in spec.get("items", []):          # offers typed in by hand (tracking link from Impact)
+            if m.get("url") and m.get("title"):
+                offers.append({"id": "manual-" + m["url"][-40:], "name": m["title"], "url": m["url"], "image": m.get("image", ""),
+                               "brand": m.get("brand", spec.get("label", "")), "price": None, "orig": None, "discount": 0,
+                               "currency": "USD", "coupon": m.get("coupon", ""), "category": spec.get("label", ""),
+                               "department": spec.get("label", ""), "desc": m.get("description", ""),
+                               "program": spec.get("label", ""), "_score": (2, 0)})
+        offers.sort(key=lambda o: o["_score"], reverse=True)
+        seen, out = set(), []
+        for o in offers:
+            key = o["name"].strip().lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(o)
+        result[fname] = out[: int(spec.get("max_items", 20))]
+    return result
+
+
 def main():
     local = [p.strip() for p in env("LOCAL_FILE").split(",") if p.strip()]
     downloaded = []
@@ -658,6 +841,8 @@ def main():
         print("WARNING: links don't look like Impact tracking links. Set TRACKING_TEMPLATE "
               "so you get credit for sales.")
 
+    items = apply_payouts(items)
+
     sort_by = env("SORT_BY", "discount").lower()
     if sort_by == "discount":
         items.sort(key=lambda i: i["discount"], reverse=True)
@@ -688,7 +873,10 @@ def main():
     for fname, rule in feeds.items():
         cap = int(rule.get("max_items", max_items))
         sel, names = [], set()
-        for i in items:
+        pool = items
+        if rule.get("sort") == "payout":      # highest estimated commission first, then biggest discount
+            pool = sorted(items, key=lambda i: (i["_boost"], i["_rate"] or 0, i["discount"]), reverse=True)
+        for i in pool:
             if len(sel) >= cap:
                 break
             key = i["name"].strip().lower()
@@ -705,6 +893,13 @@ def main():
             json.dump({"feed": fname, "updated": now_dt.isoformat(), "items": clean}, f, ensure_ascii=False)
         write_rss(f"docs/{fname}.xml", fname, sel, now)
         print(f"Feed '{fname}': {len(sel)} items -> docs/{fname}.json, docs/{fname}.xml")
+
+    for fname, sel in build_offers().items():
+        clean = [{k: v for k, v in i.items() if not k.startswith("_")} for i in sel]
+        with open(f"docs/{fname}.json", "w", encoding="utf-8") as f:
+            json.dump({"feed": fname, "updated": now_dt.isoformat(), "items": clean}, f, ensure_ascii=False)
+        write_rss(f"docs/{fname}.xml", fname, sel, now)
+        print(f"Offers feed '{fname}': {len(sel)} items -> docs/{fname}.json, docs/{fname}.xml")
 
     for fname, sel in resolve_picks(items, in_stock_only, ok_stock).items():
         if fname in feeds:
