@@ -874,8 +874,11 @@ def main():
         cap = int(rule.get("max_items", max_items))
         sel, names = [], set()
         pool = items
-        if rule.get("sort") == "payout":      # highest estimated commission first, then biggest discount
+        if rule.get("sort") == "payout":      # highest estimated commission rate first, then biggest discount
             pool = sorted(items, key=lambda i: (i["_boost"], i["_rate"] or 0, i["discount"]), reverse=True)
+        elif rule.get("sort") == "earnings":  # highest estimated earnings per sale (rate x price) first
+            pool = sorted(items, key=lambda i: (i["_boost"], (i["_rate"] or 0) * (i["price"] or 0), i["discount"]),
+                          reverse=True)
         for i in pool:
             if len(sel) >= cap:
                 break
