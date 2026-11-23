@@ -6,12 +6,14 @@
       "nhl shop",
       "mlb shop",
       "nba store",
-      "wnba"
+      "wnba",
+      "fanatics top"
     ]
   },
   "vikings": {
     "programs": [
-      "nfl shop"
+      "nfl shop",
+      "fanatics top"
     ],
     "include": [
       "vikings"
@@ -19,7 +21,8 @@
   },
   "wild": {
     "programs": [
-      "nhl shop"
+      "nhl shop",
+      "fanatics top"
     ],
     "include": [
       "minnesota wild"
@@ -27,7 +30,8 @@
   },
   "twins": {
     "programs": [
-      "mlb shop"
+      "mlb shop",
+      "fanatics top"
     ],
     "include": [
       "twins"
@@ -35,7 +39,8 @@
   },
   "timberwolves": {
     "programs": [
-      "nba store"
+      "nba store",
+      "fanatics top"
     ],
     "include": [
       "timberwolves"
@@ -43,7 +48,8 @@
   },
   "lynx": {
     "programs": [
-      "wnba"
+      "wnba",
+      "fanatics top"
     ],
     "include": [
       "lynx"
@@ -436,15 +442,23 @@
   },
   "vikings-jerseys": {
     "programs": [
-      "nfl shop"
+      "nfl shop",
+      "fanatics top"
     ],
     "include": [
       "jersey"
+    ],
+    "exclude": [
+      "wild",
+      "twins",
+      "timberwolves",
+      "lynx"
     ]
   },
   "twins-hats": {
     "programs": [
-      "mlb shop"
+      "mlb shop",
+      "fanatics top"
     ],
     "include": [
       "hat",
@@ -455,7 +469,11 @@
       "knit"
     ],
     "exclude": [
-      "captain"
+      "captain",
+      "vikings",
+      "wild",
+      "timberwolves",
+      "lynx"
     ]
   },
   "target-ornaments": {
