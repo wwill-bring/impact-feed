@@ -648,5 +648,53 @@
     "exclude": [
       "gift card"
     ]
+  },
+  "bestbuy-small-appliances": {
+    "programs": [
+      "best buy"
+    ],
+    "brands": [
+      "shark",
+      "ninja",
+      "dyson"
+    ],
+    "sort": "payout"
+  },
+  "bestbuy-audio": {
+    "programs": [
+      "best buy"
+    ],
+    "departments": [
+      "home audio",
+      "speakers",
+      "sound bars"
+    ],
+    "sort": "payout"
+  },
+  "bestbuy-computers": {
+    "programs": [
+      "best buy"
+    ],
+    "departments": [
+      "chromebooks",
+      "tablets",
+      "printers",
+      "computer accessories",
+      "mini pcs",
+      "monitors"
+    ],
+    "min_payout": 5,
+    "sort": "payout"
+  },
+  "bestbuy-cameras": {
+    "programs": [
+      "best buy"
+    ],
+    "departments": [
+      "cameras, camcorders & drones",
+      "drones",
+      "digital cameras"
+    ],
+    "sort": "payout"
   }
 }

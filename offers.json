@@ -1,10 +1,33 @@
 {
-  "_how": "Feeds for brands without product catalogs (services). Each feed lists Impact campaign (program) IDs; the script pulls that brand's current ads (banners and text links) with your tracking links. You can also add offers by hand under 'items' with a title, url (an Impact tracking link) and optional image/description. Use '_titles' to replace an ad's built-in name with your own headline (matched on part of the ad name, so one entry covers 'Design 2', 'Design 3', etc.), and '_hide' to leave ads out. Ads that end up with the same headline are shown once.",
+  "_how": "Feeds for brands without product catalogs (services). Each feed lists Impact campaign (program) IDs; the script pulls that brand's current ads (banners and text links) with your tracking links. You can also add offers by hand under 'items' with a title, url (an Impact tracking link) and optional image/description. Use '_titles' to replace an ad's built-in name with your own headline (matched on part of the ad name), and '_hide' to leave ads out (matched on part of the ad name). Ads that end up with the same headline are shown once. The run log lists every ad name under 'Offers:'.",
   "_titles": {
     "Business Registration": "Starting a business? Form your LLC with Rocket Lawyer",
-    "Legal Advice": "Have a legal question? Talk to a lawyer with Rocket Lawyer"
+    "Legal Advice": "Have a legal question? Talk to a lawyer with Rocket Lawyer",
+    "Antique": "Got an antique? Ask an appraiser on JustAnswer",
+    "Home Improvement": "Home repair question? Ask an expert on JustAnswer",
+    "Trademark": "Protect your brand: file a trademark with Rocket Lawyer",
+    "Annual Report": "Keep your business in good standing: file your annual report",
+    "Registered Agent": "Need a registered agent for your business? Rocket Lawyer can help",
+    "Legal - Text Link": "Legal question? Ask a verified lawyer on JustAnswer",
+    "Talk To A Vet": "Worried about your pet? Ask a vet on JustAnswer",
+    "Veterinarian - Text Link": "Worried about your pet? Ask a vet on JustAnswer",
+    "Mechanic - Text Link": "Car trouble? Ask a certified mechanic on JustAnswer",
+    "Medical / Doctor": "Health question? Ask a doctor on JustAnswer",
+    "Career Experts": "Career question? Ask a career counselor on JustAnswer",
+    "General Experts": "Need an expert? Ask one on JustAnswer, 24/7",
+    "Social Security Law": "Social Security question? Ask a verified expert on JustAnswer",
+    "Landlord / Tenant": "Landlord or tenant problem? Ask a lawyer on JustAnswer"
   },
-  "_hide": [],
+  "_hide": [
+    "CUSTOM",
+    "(UK)",
+    "(IE)",
+    "Irish",
+    "test",
+    "Tech Support",
+    "@ www.",
+    "Reptile"
+  ],
   "justanswer": {
     "label": "JustAnswer",
     "campaigns": [

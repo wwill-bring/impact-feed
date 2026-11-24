@@ -1,5 +1,5 @@
 {
-  "_note": "Catalogs to pull, by Impact catalog ID. 'keywords' limits a catalog to matching products. 'search' adds keyword searches on top of the normal pull (used for seasonal feeds). 'boost': true shows that catalog's products first in every feed.",
+  "_note": "Catalogs to pull, by Impact catalog ID. 'keywords' = only matching products. 'search' = extra searches. 'pull': false = skip the general 20,000-item download and use only the searches. 'boost': true = shown first. 'department_field' = which field holds the store's department.",
   "catalogs": {
     "10636": {
       "label": "Cabela's",
@@ -15,6 +15,45 @@
     "530": {
       "label": "Target",
       "search": [
+        "bedding",
+        "comforter",
+        "throw pillow",
+        "throw blanket",
+        "bath towel",
+        "rug",
+        "lamp",
+        "wall decor",
+        "candle",
+        "storage",
+        "organizer",
+        "kitchen",
+        "cookware",
+        "dinnerware",
+        "small appliance",
+        "furniture",
+        "patio",
+        "Threshold",
+        "Hearth & Hand",
+        "Studio McGee",
+        "women's sweater",
+        "women's jacket",
+        "men's jacket",
+        "men's hoodie",
+        "kids pajamas",
+        "family pajamas",
+        "sneakers",
+        "boots",
+        "handbag",
+        "jewelry",
+        "Universal Thread",
+        "A New Day",
+        "Goodfellow",
+        "Wild Fable",
+        "All in Motion",
+        "Cat & Jack",
+        "board game",
+        "LEGO",
+        "toys",
         "Christmas",
         "holiday",
         "Hanukkah",
@@ -24,18 +63,66 @@
         "gift set",
         "Santa",
         "nutcracker"
-      ]
+      ],
+      "department_field": "labels",
+      "pull": false,
+      "search_pages": 20
     },
     "21610": {
       "label": "Best Buy",
       "search": [
+        "Shark",
+        "Ninja",
+        "Dyson",
+        "refrigerator",
+        "washer",
+        "dryer",
+        "dishwasher",
+        "range",
+        "microwave",
+        "Frigidaire",
+        "GE Profile",
+        "TCL TV",
+        "Hisense TV",
+        "Samsung TV",
+        "LG TV",
+        "TV",
+        "Roku TV",
+        "Sony TV",
+        "Insignia",
+        "Beats",
+        "Bose headphones",
+        "Sony headphones",
+        "Skullcandy",
+        "JLab",
+        "Sonos",
+        "Ring",
+        "Blink",
+        "Logitech",
+        "Corsair",
+        "SteelSeries",
+        "Razer",
+        "HyperX",
+        "Turtle Beach",
+        "Meta Quest",
+        "DJI",
+        "Nikon",
+        "Sony camera",
+        "Chromebook",
+        "Lenovo tablet",
+        "Fire tablet",
+        "HP printer",
+        "Epson",
+        "mini PC",
         "holiday",
         "Christmas",
         "gift",
         "Black Friday",
-        "stocking stuffer",
-        "TV"
-      ]
+        "stocking stuffer"
+      ],
+      "pull": false,
+      "department_field": "category",
+      "search_pages": 20
     },
     "4962": {
       "label": "Banana Republic",
@@ -57,7 +144,8 @@
         "gift",
         "sweater",
         "fleece"
-      ]
+      ],
+      "department_field": "labels"
     },
     "4963": {
       "label": "Athleta",
@@ -73,31 +161,36 @@
       "label": "NFL Shop",
       "keywords": [
         "Minnesota Vikings"
-      ]
+      ],
+      "department_field": "text2"
     },
     "5264": {
       "label": "NHL Shop",
       "keywords": [
         "Minnesota Wild"
-      ]
+      ],
+      "department_field": "text2"
     },
     "5266": {
       "label": "MLB Shop",
       "keywords": [
         "Minnesota Twins"
-      ]
+      ],
+      "department_field": "text2"
     },
     "5265": {
       "label": "NBA Store",
       "keywords": [
         "Minnesota Timberwolves"
-      ]
+      ],
+      "department_field": "text2"
     },
     "10333": {
       "label": "WNBA Shop",
       "keywords": [
         "Minnesota Lynx"
-      ]
+      ],
+      "department_field": "text2"
     },
     "5812": {
       "label": "Fanatics Top Products",
@@ -108,7 +201,8 @@
         "Minnesota Timberwolves",
         "Minnesota Twins",
         "Minnesota Lynx"
-      ]
+      ],
+      "department_field": "text2"
     }
   }
 }
