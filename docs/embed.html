@@ -5,16 +5,25 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Product picks</title>
-<style>html,body{margin:0;padding:0 2px;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}</style>
+<style>
+html,body{margin:0;padding:0 2px;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+/* Inside an iframe the height is fixed, so keep products in one row at every width
+   and let readers swipe sideways on phones instead of stacking rows. */
+.bmtn-deals{margin:0 !important}
+.bmtn-deals .bmtn-deals__grid{display:grid !important;grid-auto-flow:column;grid-template-columns:none !important;
+  grid-auto-columns:minmax(170px,240px);gap:14px;overflow-x:auto;overscroll-behavior-x:contain;
+  scroll-snap-type:x mandatory;padding-bottom:8px;-webkit-overflow-scrolling:touch}
+.bmtn-deals .bmtn-deals__card{scroll-snap-align:start}
+.bmtn-deals .bmtn-deals__name{min-height:3.9em}
+</style>
 </head>
 <body>
 <!-- Iframe fallback: embed.html?feed=sports&count=4&title=Shop%20the%20story -->
 <div id="w" class="bmtn-deals"></div>
 <script>
   var p = new URLSearchParams(location.search), w = document.getElementById("w");
-  ["feed","count","title","brand","shuffle"].forEach(function (k) { if (p.has(k)) w.setAttribute("data-" + k, p.get(k)); });
+  ["feed","count","title","brand","program","shuffle","disclosure","color"].forEach(function (k) { if (p.has(k)) w.setAttribute("data-" + k, p.get(k)); });
 </script>
 <script src="widget.js"></script>
 </body>
 </html>
- 

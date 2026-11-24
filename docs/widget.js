@@ -12,8 +12,11 @@
  *   data-brand       only show products whose brand contains this text
  *   data-program     only show products from one affiliate program, e.g. "cabela"
  *   data-disclosure  replace the disclosure sentence
+ *   data-color       button and sale-badge color as a hex code, e.g. "0b4f5c" (default teal)
  */
 (function () {
+  // Loaded twice (e.g. once per story block)? Just scan the page again.
+  if (window.__bmtnDeals) { window.__bmtnDeals.scan(); return; }
   var script = document.currentScript ||
     [].slice.call(document.getElementsByTagName("script")).filter(function (s) {
       return /widget\.js(\?|$)/.test(s.src);
@@ -26,7 +29,7 @@
     var css = document.createElement("style");
     css.id = "bmtn-deals-css";
     css.textContent = [
-      ".bmtn-deals{--bd-accent:#d6001c;--bd-border:#e2e2e2;--bd-muted:#666;--bd-bg:#fff;font-family:inherit;margin:1.75em 0;clear:both}",
+      ".bmtn-deals{--bd-accent:#0b4f5c;--bd-border:#e2e2e2;--bd-muted:#666;--bd-bg:#fff;font-family:inherit;margin:1.75em 0;clear:both}",
       ".bmtn-deals__head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;border-top:3px solid var(--bd-accent);padding-top:10px;margin-bottom:12px}",
       ".bmtn-deals__title{font-size:1.15em;font-weight:800;margin:0;line-height:1.2}",
       ".bmtn-deals__disc{font-size:.75em;color:var(--bd-muted);margin:0 0 12px}",
@@ -82,6 +85,8 @@
     var program = (el.getAttribute("data-program") || "").toLowerCase().replace(/'/g, "");
     var doShuffle = el.getAttribute("data-shuffle") !== "false";
     var disclosure = el.getAttribute("data-disclosure") || DISCLOSURE;
+    var color = (el.getAttribute("data-color") || "").replace(/^#/, "");
+    if (/^[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(color)) el.style.setProperty("--bd-accent", "#" + color);
 
     load(feed).then(function (data) {
       var items = (data.items || []).filter(function (i) {
@@ -117,6 +122,17 @@
   }
 
   function init() { [].forEach.call(document.querySelectorAll(".bmtn-deals"), render); }
+  window.__bmtnDeals = { scan: init };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
+  // Pages built by JavaScript (headless CMS front ends) can add the box after this script runs,
+  // so keep watching for new boxes.
+  if (window.MutationObserver) {
+    var pending = false;
+    new MutationObserver(function () {
+      if (pending) return;
+      pending = true;
+      setTimeout(function () { pending = false; init(); }, 150);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
 })();
