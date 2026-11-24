@@ -4,6 +4,19 @@ on:
   schedule:
     - cron: "17 11 * * *"   # daily, 5:17 AM Central (11:17 UTC; 6:17 AM during daylight time)
   workflow_dispatch:        # adds a "Run workflow" button for manual runs
+  push:                     # runs automatically when these files are saved on GitHub
+    branches: [main]
+    paths:
+      - "picks.json"
+      - "feeds.json"
+      - "catalogs.json"
+      - "build_feed.py"
+
+# If you save several edits in a row, only the newest run finishes
+# (an older run still in progress is cancelled, since the newest has all the changes).
+concurrency:
+  group: build-feed
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -25,6 +38,7 @@ jobs:
           IMPACT_FTP_PASS: ${{ secrets.IMPACT_FTP_PASS }}
           IMPACT_ACCOUNT_SID: ${{ secrets.IMPACT_ACCOUNT_SID }}
           IMPACT_AUTH_TOKEN: ${{ secrets.IMPACT_AUTH_TOKEN }}
+          PAYOUT_RULES:    ${{ secrets.PAYOUT_RULES }}
           API_QUERY:       ${{ vars.API_QUERY }}
           CATALOG_MATCH:   ${{ vars.CATALOG_MATCH }}
           FEED_TITLE:      ${{ vars.FEED_TITLE }}
@@ -41,4 +55,5 @@ jobs:
           git config user.email "feed-bot@users.noreply.github.com"
           git add docs/
           git diff --cached --quiet || git commit -m "Update feed $(date -u +%F)"
+          git pull --rebase --autostash origin main   # in case someone edited a file during the run
           git push
