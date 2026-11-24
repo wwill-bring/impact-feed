@@ -33,7 +33,7 @@
         "furniture",
         "patio",
         "Threshold",
-        "Hearth & Hand",
+        "Hearth Hand",
         "Studio McGee",
         "women's sweater",
         "women's jacket",
@@ -50,7 +50,7 @@
         "Goodfellow",
         "Wild Fable",
         "All in Motion",
-        "Cat & Jack",
+        "Cat Jack",
         "board game",
         "LEGO",
         "toys",
@@ -125,15 +125,7 @@
       "search_pages": 20
     },
     "4962": {
-      "label": "Banana Republic",
-      "search": [
-        "holiday",
-        "gift",
-        "cashmere",
-        "velvet",
-        "sequin",
-        "sweater"
-      ]
+      "label": "Banana Republic"
     },
     "4972": {
       "label": "Gap Factory",
@@ -148,14 +140,7 @@
       "department_field": "labels"
     },
     "4963": {
-      "label": "Athleta",
-      "search": [
-        "holiday",
-        "gift",
-        "fleece",
-        "sherpa",
-        "sweater"
-      ]
+      "label": "Athleta"
     },
     "5263": {
       "label": "NFL Shop",
