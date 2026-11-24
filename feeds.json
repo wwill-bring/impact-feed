@@ -696,5 +696,18 @@
       "digital cameras"
     ],
     "sort": "payout"
+  },
+  "bestbuy-ring": {
+    "programs": [
+      "best buy"
+    ],
+    "departments": [
+      "smart home > home security & monitoring"
+    ],
+    "brands": [
+      "ring"
+    ],
+    "max_items": 20,
+    "sort": "payout"
   }
 }
